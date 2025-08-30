@@ -1,21 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  ChevronUp, 
-  ChevronDown, 
-  Minimize2,
+import {
+  Play,
+  Pause,
+  Square,
   Camera,
   Volume2,
   VolumeX,
-  AlertTriangle
+  AlertTriangle,
+  Video,
+  VideoOff,
 } from 'lucide-react';
 import { ClopAvatar } from '@/components/ClopAvatar';
 import { LifeBar } from '@/components/LifeBar';
@@ -40,58 +38,95 @@ export default function SessionScreen() {
     lives,
     isDistracted,
     elapsedTime,
-    showWidget,
-    showCamera,
+    preferences,
     pauseSession,
     resumeSession,
     endSession,
     simulateDistraction,
     updateElapsedTime,
-    toggleWidget,
     handleWindowBlur,
     handleWindowFocus,
   } = useClopFocusStore();
 
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [showCameraFeed, setShowCameraFeed] = useState(showCamera);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Redirect if no session
+  const justEndedRef = useRef(false);
+
   useEffect(() => {
     if (!currentSession) {
+      if (justEndedRef.current) return;
       navigate('/');
-      return;
     }
   }, [currentSession, navigate]);
 
-  // Timer update
   useEffect(() => {
-    const interval = setInterval(() => {
-      updateElapsedTime();
-    }, 1000);
+    if (currentSession && preferences.cameraOn && !cameraStream) {
+      initializeCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSession, preferences.cameraOn]);
 
+  useEffect(() => {
+    return () => {
+      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+    };
+  }, [cameraStream]);
+
+  const initializeCamera = async () => {
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      setCameraStream(stream);
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch (error) {
+      console.error('Erro ao acessar câmera:', error);
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') setCameraError('Permissão de câmera negada');
+        else if (error.name === 'NotFoundError') setCameraError('Câmera não encontrada');
+        else setCameraError('Não foi possível acessar a câmera');
+      } else setCameraError('Erro desconhecido ao acessar câmera');
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+      setCameraError(null);
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => updateElapsedTime(), 1000);
     return () => clearInterval(interval);
   }, [updateElapsedTime]);
 
-  // Window focus/blur detection
   useEffect(() => {
-    const handleFocus = () => handleWindowFocus();
-    const handleBlur = () => handleWindowBlur();
-
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-
+    const onFocus = () => handleWindowFocus();
+    const onBlur = () => handleWindowBlur();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
     };
   }, [handleWindowFocus, handleWindowBlur]);
 
-  // Auto-end session when time is up
   useEffect(() => {
     if (currentSession && elapsedTime >= currentSession.durationSec) {
-      endSession();
-      navigate('/results');
+      stopCamera();
+      justEndedRef.current = true;
+      navigate('/results', { replace: true });
+      setTimeout(() => {
+        endSession();
+        justEndedRef.current = false;
+      }, 0);
     }
   }, [currentSession, elapsedTime, endSession, navigate]);
 
@@ -107,16 +142,18 @@ export default function SessionScreen() {
   const progressPercentage = (elapsedTime / currentSession.durationSec) * 100;
 
   const handlePauseResume = () => {
-    if (sessionState === 'paused') {
-      resumeSession();
-    } else {
-      pauseSession();
-    }
+    if (sessionState === 'paused') resumeSession();
+    else pauseSession();
   };
 
   const handleEndSession = () => {
-    endSession();
-    navigate('/results');
+    stopCamera();
+    justEndedRef.current = true;
+    navigate('/results', { replace: true });
+    setTimeout(() => {
+      endSession();
+      justEndedRef.current = false;
+    }, 0);
   };
 
   const getBorderColor = () => {
@@ -127,38 +164,70 @@ export default function SessionScreen() {
 
   const levelColors = {
     leve: 'bg-level-leve text-white',
-    medio: 'bg-level-medio text-white', 
+    medio: 'bg-level-medio text-white',
     intenso: 'bg-level-intenso text-white',
   };
 
+  const MetricsGrid = () => (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+      <Card>
+        <CardContent className="p-3 text-center">
+          <div className="text-xl font-bold text-primary">
+            {Math.floor(currentSession.focusSec / 60000)}min
+          </div>
+          <p className="text-xs text-muted-foreground">Tempo focado</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <div className="text-xl font-bold text-game-coin">{currentSession.coins}</div>
+          <p className="text-xs text-muted-foreground">Moedas</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <div className="text-xl font-bold text-muted-foreground">{currentSession.pauses}</div>
+          <p className="text-xs text-muted-foreground">Pausas</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-3 text-center">
+          <div className="text-xl font-bold text-game-distraction">{currentSession.distractions}</div>
+          <p className="text-xs text-muted-foreground">Distrações</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   return (
-    <div className={cn(
-      'min-h-screen bg-gradient-to-br from-background via-background to-primary/5',
-      'border-t-4 transition-all duration-300',
-      getBorderColor()
-    )}>
+    <div
+      className={cn(
+        'min-h-screen bg-gradient-to-br from-background via-background to-primary/5',
+        'border-t-4 transition-all duration-300',
+        getBorderColor()
+      )}
+    >
       {/* Header */}
-      <div className="p-4 bg-card/50 backdrop-blur-sm border-b">
+      <div className="p-3 bg-card/50 backdrop-blur-sm border-b">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <ClopAvatar size="sm" />
             <div>
               <Badge className={levelColors[currentSession.level]} variant="secondary">
                 {currentSession.level.toUpperCase()}
               </Badge>
-              <p className="text-sm text-muted-foreground mt-1">
-                Sessão em andamento
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Sessão em andamento</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <LifeBar lives={lives} size="sm" />
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setIsMuted(!isMuted)}
               aria-label={isMuted ? 'Ativar som' : 'Silenciar'}
+              className="h-8 w-8"
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </Button>
@@ -166,45 +235,31 @@ export default function SessionScreen() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Main Timer */}
+      <div className="max-w-4xl mx-auto p-5 space-y-5">
+        {/* Timer */}
         <Card className="text-center">
-          <CardContent className="p-8">
-            <div className="space-y-6">
-              {/* Timer Display */}
-              <div className="space-y-4">
-                <div className="text-6xl font-mono font-bold text-foreground">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-5xl font-mono font-bold text-foreground">
                   {formatTime(timeRemaining)}
                 </div>
-                <div className="text-lg text-muted-foreground">
+                <div className="text-sm text-muted-foreground">
                   Decorrido: {formatTime(elapsedTime)}
                 </div>
               </div>
-
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <Progress 
-                  value={progressPercentage} 
-                  className="h-3"
-                />
-                <p className="text-sm text-muted-foreground">
+              <div className="space-y-1">
+                <Progress value={progressPercentage} className="h-2" />
+                <p className="text-xs text-muted-foreground">
                   {Math.round(progressPercentage)}% concluído
                 </p>
               </div>
-
-              {/* Clop Status */}
-              <div className="py-4">
-                <ClopAvatar size="md" showMessage />
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center justify-center gap-3 pt-2">
                 <Button
-                  size="lg"
+                  size="sm"
                   variant={sessionState === 'paused' ? 'default' : 'outline'}
                   onClick={handlePauseResume}
-                  data-testid="session-pause"
-                  className="min-w-[120px]"
+                  className="min-w-[110px]"
                 >
                   {sessionState === 'paused' ? (
                     <>
@@ -218,13 +273,7 @@ export default function SessionScreen() {
                     </>
                   )}
                 </Button>
-
-                <Button
-                  size="lg"
-                  variant="destructive"
-                  onClick={() => setShowEndDialog(true)}
-                  data-testid="session-end"
-                >
+                <Button size="sm" variant="destructive" onClick={() => setShowEndDialog(true)}>
                   <Square className="w-4 h-4 mr-2" />
                   Encerrar
                 </Button>
@@ -233,96 +282,117 @@ export default function SessionScreen() {
           </CardContent>
         </Card>
 
-        {/* Widget Toggle */}
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleWidget}
-            className="gap-2"
-          >
-            {showWidget ? (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Minimizar detalhes
-              </>
-            ) : (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Ver detalhes
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* Expandable Widget */}
-        {showWidget && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-primary">
-                  {Math.floor(currentSession.focusSec / 60000)}min
+        {/* Camera ligada */}
+        {preferences.cameraOn && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold flex items-center gap-3">
+                  <Camera className="w-6 h-6 text-primary" />
+                  Monitoramento de Foco
+                </h3>
+                <div className="flex items-center gap-2">
+                  {!cameraStream && !cameraError && (
+                    <Button variant="outline" size="sm" onClick={initializeCamera} className="gap-2">
+                      <Video className="w-4 h-4" />
+                      Ativar Câmera
+                    </Button>
+                  )}
+                  {cameraStream && (
+                    <Button variant="outline" size="sm" onClick={stopCamera} className="gap-2">
+                      <VideoOff className="w-4 h-4" />
+                      Desativar
+                    </Button>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground">Tempo focado</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-game-coin">
-                  {currentSession.coins}
-                </div>
-                <p className="text-sm text-muted-foreground">Moedas</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-muted-foreground">
-                  {currentSession.pauses}
-                </div>
-                <p className="text-sm text-muted-foreground">Pausas</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-game-distraction">
-                  {currentSession.distractions}
-                </div>
-                <p className="text-sm text-muted-foreground">Distrações</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Camera Feed */}
-        {showCameraFeed && (
-          <Card className="fixed bottom-4 right-4 w-48">
-            <CardContent className="p-2">
-              <div className="aspect-video bg-muted rounded flex items-center justify-center">
-                <Camera className="w-8 h-8 text-muted-foreground" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCameraFeed(false)}
-                className="w-full mt-2"
-              >
-                <Minimize2 className="w-3 h-3 mr-1" />
-                Minimizar
-              </Button>
+              
+              <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-8 items-start">
+                {/* Métricas - Lado esquerdo */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Métricas em Tempo Real</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-primary mb-1">
+                          {Math.floor(currentSession.focusSec / 60000)}min
+                        </div>
+                        <p className="text-sm text-muted-foreground">Tempo focado</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-game-coin/20 bg-game-coin/5">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-game-coin mb-1">
+                          {currentSession.coins}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Moedas</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-blue-500/20 bg-blue-500/5">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-blue-500 mb-1">
+                          {currentSession.pauses}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Pausas</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-game-distraction/20 bg-game-distraction/5">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-game-distraction mb-1">
+                          {currentSession.distractions}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Distrações</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Vídeo - Lado direito */}
+                <div className="space-y-4 min-w-[400px]">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Preview da Câmera</h4>
+                  {cameraStream ? (
+                    <div className="relative">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-64 object-cover rounded-xl shadow-lg border-2 border-primary/20 bg-black"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                  ) : cameraError ? (
+                    <div className="w-full h-64 border-2 border-dashed border-red-300 rounded-xl flex items-center justify-center bg-red-50">
+                      <div className="text-center text-red-600">
+                        <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm font-medium">{cameraError}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 border-2 border-dashed border-muted-foreground/30 rounded-xl flex items-center justify-center bg-muted/20">
+                      <div className="text-center text-muted-foreground">
+                        <Video className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm font-medium">Câmera não ativada</p>
+                        <p className="text-xs">Clique em "Ativar Câmera" para começar</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Simulation Button (for testing) */}
+        {/* Camera desligada */}
+        {!preferences.cameraOn && <MetricsGrid />}
+
         <div className="flex justify-center">
           <Button
             variant="outline"
             size="sm"
             onClick={simulateDistraction}
-            data-testid="simulate-distraction"
             className="gap-2 text-game-distraction border-game-distraction/30"
           >
             <AlertTriangle className="w-4 h-4" />
@@ -331,21 +401,17 @@ export default function SessionScreen() {
         </div>
       </div>
 
-      {/* End Session Dialog */}
       <AlertDialog open={showEndDialog} onOpenChange={setShowEndDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Encerrar sessão?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja encerrar sua sessão de foco? 
-              Seu progresso será salvo.
+              Tem certeza que deseja encerrar sua sessão de foco? Seu progresso será salvo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEndSession}>
-              Encerrar sessão
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleEndSession}>Encerrar sessão</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

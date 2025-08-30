@@ -15,7 +15,7 @@ const levelConfig = {
   leve: {
     title: 'Leve',
     description: 'Ideal para começar, sessões mais curtas',
-    duration: '~25min',
+    duration: '25min',
     icon: Clock,
     color: 'bg-gradient-to-br from-level-leve to-level-leve/80',
     borderColor: 'border-level-leve/30',
@@ -24,7 +24,7 @@ const levelConfig = {
   medio: {
     title: 'Médio',
     description: 'Equilibrio entre foco e descanso',
-    duration: '~45min', 
+    duration: '45min', 
     icon: Zap,
     color: 'bg-gradient-to-br from-level-medio to-level-medio/80',
     borderColor: 'border-level-medio/30',
@@ -33,7 +33,7 @@ const levelConfig = {
   intenso: {
     title: 'Intenso',
     description: 'Para quem quer foco máximo',
-    duration: '~90min',
+    duration: '90min',
     icon: Flame,
     color: 'bg-gradient-to-br from-level-intenso to-level-intenso/80',
     borderColor: 'border-level-intenso/30',

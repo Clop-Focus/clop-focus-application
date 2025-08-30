@@ -3,12 +3,45 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "dist-electron/main.cjs",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "build:electron": "tsx scripts/build-electron.ts",
+    "watch:electron": "tsx --watch scripts/build-electron.ts",
+    "dev": "concurrently -k \"vite\" \"npm:watch:electron\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "vite build && npm run build:electron && electron-builder",
     "build:dev": "vite build --mode development",
+    "start": "electron .",
     "lint": "eslint .",
     "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.seuorg.clopfocus",
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "build/**"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "extraMetadata": {
+      "main": "dist-electron/main.cjs"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "extendInfo": {
+        "NSCameraUsageDescription": "Usamos a câmera para monitorar foco durante a sessão."
+      }
+    }
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -70,6 +103,10 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "electron": "^37.4.0",
+    "electron-builder": "^24.0.0",
+    "esbuild": "^0.23.0",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -77,8 +114,10 @@
     "lovable-tagger": "^1.1.9",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.0.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "wait-on": "^8.0.4"
   }
 }

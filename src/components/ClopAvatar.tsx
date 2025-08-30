@@ -1,65 +1,50 @@
-import { useClopFocusStore } from '@/store/clopfocus-store';
-import { cn } from '@/lib/utils';
+import React from 'react'
+import { useClopFocusStore } from '@/store/clopfocus-store'
+import { cn } from '@/lib/utils'
 
-interface ClopAvatarProps {
-  size?: 'sm' | 'md' | 'lg';
-  showMessage?: boolean;
-  className?: string;
+type ClopAvatarProps = {
+  size?: 'sm' | 'md' | 'lg'
+  showMessage?: boolean
+  moodOverride?: 'focus' | 'calm' | 'alert'
 }
 
-export const ClopAvatar = ({ size = 'md', showMessage = false, className }: ClopAvatarProps) => {
-  const { getClopMood, getMotivationalMessage, preferences } = useClopFocusStore();
-  
-  const mood = getClopMood();
-  const message = getMotivationalMessage();
-  
-  const sizeClasses = {
-    sm: 'w-12 h-12 text-2xl',
-    md: 'w-16 h-16 text-4xl',
-    lg: 'w-24 h-24 text-6xl',
-  };
+const sizeMap = { sm: 32, md: 48, lg: 72 }
 
-  const moodEmojis = {
-    happy: '🎯',
-    neutral: '😊',
-    sad: '😔',
-    focused: '🧠',
-    distracted: '😵',
-  };
+export const ClopAvatar: React.FC<ClopAvatarProps> = ({
+  size = 'md',
+  showMessage = false,
+  moodOverride,
+}) => {
+  const { sessionState, isDistracted } = useClopFocusStore()
 
-  const moodColors = {
-    happy: 'from-game-focus to-game-coin',
-    neutral: 'from-primary to-secondary',
-    sad: 'from-game-distraction to-destructive',
-    focused: 'from-game-focus to-accent',
-    distracted: 'from-game-distraction to-game-warning animate-pulse',
-  };
+  const mood: 'focus' | 'calm' | 'alert' =
+    moodOverride ??
+    (isDistracted ? 'alert' : sessionState === 'paused' ? 'calm' : 'focus')
+
+  const px = sizeMap[size]
+
+  const ring =
+    mood === 'alert'
+      ? 'ring-rose-400/60'
+      : mood === 'calm'
+      ? 'ring-blue-400/60'
+      : 'ring-violet-400/60'
+
+  const msg =
+    mood === 'alert' ? 'Ei, foco!' : mood === 'calm' ? 'Pausa controlada' : 'Bora!'
 
   return (
-    <div className={cn('flex flex-col items-center gap-3', className)}>
-      <div 
+    <div className="flex items-center gap-2">
+      <div
         className={cn(
-          'flex items-center justify-center rounded-full',
-          'bg-gradient-to-br border-2 border-border/20',
-          'shadow-lg transition-all duration-300',
-          sizeClasses[size],
-          moodColors[mood]
+          'rounded-full ring-4 bg-gradient-to-br from-primary/20 to-primary/10 shadow',
+          ring
         )}
-        role="img"
-        aria-label={`Clop está ${mood === 'happy' ? 'feliz' : mood === 'focused' ? 'focado' : mood === 'distracted' ? 'distraído' : mood === 'sad' ? 'triste' : 'neutro'}`}
+        style={{ width: px, height: px }}
       >
-        <span className="drop-shadow-sm">
-          {moodEmojis[mood]}
-        </span>
+        <div className="w-full h-full grid place-items-center text-xl">🧠</div>
       </div>
-      
-      {showMessage && (
-        <div className="text-center max-w-xs">
-          <p className="text-sm font-medium text-foreground/80 animate-fade-in">
-            {message}
-          </p>
-        </div>
-      )}
+      {showMessage && <span className="text-sm text-muted-foreground">{msg}</span>}
     </div>
-  );
-};
+  )
+}
