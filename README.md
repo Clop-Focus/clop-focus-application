@@ -1,73 +1,29 @@
-# Welcome to your Lovable project
+# ClopFocus - Aplicativo de Foco Gamificado
 
-## Project info
+**ClopFocus** é uma aplicação web gamificada de foco e produtividade, otimizada para desktop. Ajuda usuários a manterem o foco através de sessões cronometradas com elementos de gamificação.
 
-**URL**: https://lovable.dev/projects/57bad5c6-45a0-475f-9f1b-7df0d36aca73
+## 🎯 Características Principais
 
-## How can I edit this code?
+- **3 Telas Principais**: Setup rápido, sessão de foco e resultados detalhados
+- **Gamificação Completa**: Sistema de vidas, moedas, pontuação e mascote Clop
+- **Níveis de Dificuldade**: Leve (25min), Médio (45min), Intenso (90min) 
+- **Simulação de Distrações**: Detecta quando o usuário sai de foco
+- **Analytics Visuais**: Gráficos de performance com Recharts
+- **Persistência Local**: Histórico de sessões salvo no navegador
 
-There are several ways of editing your application.
+## 🚀 Stack Tecnológica
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI**: Tailwind CSS + shadcn/ui components
+- **Estado**: Zustand com persistência
+- **Charts**: Recharts para visualizações
+- **Navegação**: React Router DOM
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/57bad5c6-45a0-475f-9f1b-7df0d36aca73) and start prompting.
+## 🛠️ Instalação
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/57bad5c6-45a0-475f-9f1b-7df0d36aca73) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Criada V1 completa do ClopFocus como web app otimizada para desktop com todas as funcionalidades gamificadas solicitadas.

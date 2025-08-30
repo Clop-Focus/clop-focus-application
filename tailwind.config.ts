@@ -52,6 +52,19 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// Gamification colors
+				'game-focus': 'hsl(var(--game-focus))',
+				'game-focus-foreground': 'hsl(var(--game-focus-foreground))',
+				'game-distraction': 'hsl(var(--game-distraction))',
+				'game-distraction-foreground': 'hsl(var(--game-distraction-foreground))',
+				'game-warning': 'hsl(var(--game-warning))',
+				'game-warning-foreground': 'hsl(var(--game-warning-foreground))',
+				'game-coin': 'hsl(var(--game-coin))',
+				'game-coin-foreground': 'hsl(var(--game-coin-foreground))',
+				// Level colors
+				'level-leve': 'hsl(var(--level-leve))',
+				'level-medio': 'hsl(var(--level-medio))',
+				'level-intenso': 'hsl(var(--level-intenso))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -88,7 +101,20 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fadeIn 0.3s ease-out',
+				'scale-in': 'scaleIn 0.2s ease-out',
+				'pulse-distraction': 'pulse 1s ease-in-out infinite'
+			},
+			keyframes: {
+				fadeIn: {
+					'0%': { opacity: '0', transform: 'translateY(10px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				scaleIn: {
+					'0%': { opacity: '0', transform: 'scale(0.95)' },
+					'100%': { opacity: '1', transform: 'scale(1)' }
+				}
 			}
 		}
 	},
