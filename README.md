@@ -10,25 +10,29 @@
   <tr>
     <td align="center" style="padding: 15px; border: 1px solid #464646;">
         <img src="https://media.licdn.com/dms/image/v2/D4D03AQGv6igrZe6fWQ/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1697766569692?e=1759363200&v=beta&t=9a9HT2IzTagEoS9KYtqKkxI3lq1ZdjHYFQRK0lZ9-IY" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
-        <sub><b>Alexandre Abreu </b></sub><br><br>
+        <sub><b>Alexandre Abreu </b></sub><br>
+        <sub><a href="mailto:moreiraabreu@outlook.com">moreiraabreu@outlook.com</a></sub><br><br>
          <a href="https://www.linkedin.com/in/alexandre-moreiradeabreu/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" /></a>
          <a href="https://github.com/abreu-ale"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a>
     </td>
     <td align="center" style="padding: 15px; border: 1px solid #464646;">
         <img src="https://media.licdn.com/dms/image/v2/D4D03AQGdIpURPwy7mA/profile-displayphoto-shrink_200_200/B4DZXuJYhMG4AY-/0/1743457193288?e=1759363200&v=beta&t=Qso3hWeKU-8SVkvUea-R820pGIBPgJ6_kS4QFBFpI7E" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
-        <sub><b> Caio Martins</b></sub><br><br>
+        <sub><b> Caio Martins</b></sub><br>
+        <sub><a href="mailto:caio3martins@gmail.com">caio3martins@gmail.com</a></sub><br><br>
          <a href="https://www.linkedin.com/in/caio3martins/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" /></a>
         <a href="https://github.com/caioedum"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a>
     </td>
     <td align="center" style="padding: 15px; border: 1px solid #464646;">
         <img src="https://media.licdn.com/dms/image/v2/D4D03AQG6IxfXkNZwtQ/profile-displayphoto-shrink_200_200/B4DZPXYUivHgAY-/0/1734485297986?e=1759363200&v=beta&t=B0edQiSL4aI1Fg0i946adP_MalDiOhuRncgjSmnpz8w" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
-        <sub><b>Daniel Salles</b></sub><br><br>
+        <sub><b>Daniel Salles</b></sub><br>
+        <sub><a href="mailto:daniel.sant.salles@gmail.com">daniel.sant.salles@gmail.com</a></sub><br><br>
         <a href="https://www.linkedin.com/in/daniel-salles-b0b1361a5/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" /></a>
         <a href="https://github.com/Martoto"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a> 
     </td>
     <td align="center" style="padding: 15px; border: 1px solid #464646;">
         <img src="https://media.licdn.com/dms/image/v2/D4D03AQE8mVvu4P7-RQ/profile-displayphoto-scale_200_200/B4DZgzEAeyGsAg-/0/1753203347793?e=1759363200&v=beta&t=4Wa-jBUDzAzVLaKX6SMBOhuR2qoHJTESvMdkQP26gFw" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
-        <sub><b>Hemily Nara</b></sub><br><br>
+        <sub><b>Hemily Nara</b></sub><br>
+        <sub><a href="mailto:hemilynara@gmail.com">hemilynara@gmail.com</a></sub><br><br>
         <a href="https://www.linkedin.com/in/hemilynara/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" /></a>
         <a href="https://github.com/hemilynara"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a> 
     </td>
@@ -36,7 +40,8 @@
   <tr>
     <td align="center" style="padding: 15px; border: 1px solid #464646;">
       <img src="https://media.licdn.com/dms/image/v2/D4E03AQG5zX-26GuXZw/profile-displayphoto-scale_200_200/B4EZfXUqEmHYAY-/0/1751664208401?e=1759363200&v=beta&t=oSZ7yWRdBq1Sfxl36Euoi0QnDhM2JQeCJVr0g_F9LFs" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
-      <sub><b>Roberto D. B. Filho</b></sub><br><br>
+      <sub><b>Roberto D. B. Filho</b></sub><br>
+      <sub><a href="mailto:roberto.dbf1@gmail.com">roberto.dbf1@gmail.com</a></sub><br><br>
       <a href="https://www.linkedin.com/in/roberto-dbf/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" /></a>
       <a href="https://github.com/robertof1lho"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a>
     </td>
