@@ -44,7 +44,6 @@ export default function SessionScreen() {
     pauseSession,
     resumeSession,
     endSession,
-    simulateDistraction,
     updateElapsedTime,
     handleWindowBlur,
     handleWindowFocus,
@@ -63,12 +62,9 @@ export default function SessionScreen() {
   const {
     isConnected,
     isMonitoring,
-    gazeData,
-    sessionState: gazeSessionState,
     connect,
     startMonitoring,
     stopMonitoring,
-    getSessionStats,
   } = useGazeDetection();
 
   const justEndedRef = useRef(false);
@@ -91,10 +87,9 @@ export default function SessionScreen() {
   useEffect(() => {
     if (cameraStream && !isConnected) {
       connect().then(() => {
-        console.log('✅ Conectado ao backend de gaze');
         startMonitoring();
       }).catch((error) => {
-        console.error('❌ Erro ao conectar ao backend de gaze:', error);
+        // Silenciar erro de conexão
       });
     }
   }, [cameraStream, isConnected, connect, startMonitoring]);
@@ -122,7 +117,6 @@ export default function SessionScreen() {
       setCameraStream(stream);
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch (error) {
-      console.error('Erro ao acessar câmera:', error);
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') setCameraError('Permissão de câmera negada');
         else if (error.name === 'NotFoundError') setCameraError('Câmera não encontrada');
@@ -266,23 +260,6 @@ export default function SessionScreen() {
           <div className="flex items-center gap-2">
             <LifeBar lives={lives} size="sm" />
             
-            {/* Indicador de status das notificações */}
-            <div className="flex items-center gap-1">
-              {permission === 'granted' ? (
-                <Badge variant="secondary" className="bg-green-500/20 text-green-600 border-green-500/30">
-                  🔔 Notificações ativas
-                </Badge>
-              ) : permission === 'denied' ? (
-                <Badge variant="secondary" className="bg-red-500/20 text-red-600 border-red-500/30">
-                  🔕 Notificações bloqueadas
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
-                  ⏳ Aguardando permissão
-                </Badge>
-              )}
-            </div>
-            
             <Button
               variant="ghost"
               size="icon"
@@ -292,19 +269,6 @@ export default function SessionScreen() {
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </Button>
-            
-            {/* Indicador de status do Gaze Detection */}
-            <div className="flex items-center gap-1">
-              <div className={cn(
-                "w-2 h-2 rounded-full",
-                isConnected ? "bg-blue-500" : "bg-gray-400"
-              )}></div>
-              <Badge variant="secondary" className={cn(
-                isConnected ? "bg-blue-500/20 text-blue-600 border-blue-500/30" : "bg-gray-500/20 text-gray-600 border-gray-500/30"
-              )}>
-                {isConnected ? "👁️ Gaze Ativo" : "👁️ Gaze Inativo"}
-              </Badge>
-            </div>
           </div>
         </div>
       </div>
@@ -378,16 +342,6 @@ export default function SessionScreen() {
                       Desativar
                     </Button>
                   )}
-                  
-                  {/* Botão de teste do Overlay */}
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => window.overlay?.flash(600)} 
-                    className="gap-2 border-red-500/30 text-red-600 hover:bg-red-50"
-                  >
-                    🔴 Testar Overlay
-                  </Button>
                 </div>
               </div>
               
@@ -431,40 +385,10 @@ export default function SessionScreen() {
                   </div>
                 </div>
 
-                                  {/* Vídeo - Lado direito */}
-                  <div className="space-y-4 min-w-[400px]">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Preview da Câmera</h4>
-                    
-                    {/* Métricas de Gaze */}
-                    {gazeData && (
-                      <Card className="border-blue-500/20 bg-blue-500/5">
-                        <CardContent className="p-3">
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="text-muted-foreground">Gaze H:</span>
-                              <span className="ml-1 font-mono">{gazeData.gaze.h.toFixed(3)}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Gaze V:</span>
-                              <span className="ml-1 font-mono">{gazeData.gaze.v.toFixed(3)}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Attention:</span>
-                              <span className="ml-1 font-mono">{(gazeData.attention * 100).toFixed(1)}%</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">On Screen:</span>
-                              <span className={cn(
-                                "ml-1",
-                                gazeData.on_screen ? "text-green-600" : "text-red-600"
-                              )}>
-                                {gazeData.on_screen ? "Sim" : "Não"}
-                              </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                {/* Vídeo - Lado direito */}
+                <div className="space-y-4 min-w-[400px]">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Preview da Câmera</h4>
+                  
                   {cameraStream ? (
                     <div className="relative">
                       <video
@@ -476,14 +400,6 @@ export default function SessionScreen() {
                       />
                       <div className="absolute top-2 right-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                      </div>
-                      {/* Status do Gaze Detection */}
-                      <div className="absolute top-2 left-2">
-                        <div className={cn(
-                          "w-3 h-3 rounded-full",
-                          isConnected ? "bg-blue-500" : "bg-gray-400",
-                          isMonitoring ? "animate-pulse" : ""
-                        )}></div>
                       </div>
                     </div>
                   ) : cameraError ? (
@@ -510,18 +426,6 @@ export default function SessionScreen() {
 
         {/* Camera desligada */}
         {!preferences.cameraOn && <MetricsGrid />}
-
-        <div className="flex justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={simulateDistraction}
-            className="gap-2 text-game-distraction border-game-distraction/30"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            Simular distração
-          </Button>
-        </div>
       </div>
 
       <AlertDialog open={showEndDialog} onOpenChange={setShowEndDialog}>

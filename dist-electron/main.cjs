@@ -280,3 +280,23 @@ import_electron2.ipcMain.handle("notifications:notifyFocusLoss", async (event, l
     return { success: false, error: error.message };
   }
 });
+var isFocusModeEnabled = false;
+import_electron2.ipcMain.handle("focusMode:toggle", async () => {
+  console.log("\u{1F512} main: focusMode:toggle - estado atual:", isFocusModeEnabled);
+  try {
+    isFocusModeEnabled = !isFocusModeEnabled;
+    if (isFocusModeEnabled) {
+      console.log("\u{1F512} main: Modo foco ATIVADO - bloqueando notifica\xE7\xF5es externas");
+    } else {
+      console.log("\u{1F512} main: Modo foco DESATIVADO - permitindo notifica\xE7\xF5es externas");
+    }
+    return isFocusModeEnabled;
+  } catch (error) {
+    console.error("\u{1F512} main: erro ao alternar modo foco:", error);
+    return false;
+  }
+});
+import_electron2.ipcMain.handle("focusMode:getStatus", async () => {
+  console.log("\u{1F512} main: focusMode:getStatus - retornando:", isFocusModeEnabled);
+  return isFocusModeEnabled;
+});
