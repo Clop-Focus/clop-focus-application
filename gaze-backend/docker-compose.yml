@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  gaze-backend:
+    build: .
+    container_name: gaze-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=info
+      - RELOAD=false
+    volumes:
+      # Para desenvolvimento, montar código local
+      - .:/app
+      # Cache do MediaPipe
+      - mediapipe_cache:/root/.cache/mediapipe
+    restart: unless-stopped
+    # Para acesso à webcam (Linux)
+    devices:
+      - /dev/video0:/dev/video0
+    # Para acesso à webcam (macOS/Windows pode precisar de configuração adicional)
+    privileged: true
+    networks:
+      - gaze-network
+
+  # Serviço opcional para testes
+  gaze-test:
+    build: .
+    container_name: gaze-test
+    command: pytest
+    volumes:
+      - .:/app
+    depends_on:
+      - gaze-backend
+    networks:
+      - gaze-network
+
+volumes:
+  mediapipe_cache:
+
+networks:
+  gaze-network:
+    driver: bridge

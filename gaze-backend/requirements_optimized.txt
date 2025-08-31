@@ -1,0 +1,32 @@
+# Dependências base otimizadas
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# MediaPipe e visão computacional otimizados
+mediapipe>=0.10.20
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0  # Para funcionalidades extras
+
+# Processamento de imagem otimizado
+Pillow>=10.0.0
+turbojpeg>=1.2.0  # Para decodificação JPEG mais rápida
+Pillow-SIMD>=8.0.0  # Versão SIMD do Pillow (quando disponível)
+
+# Numérico e científico otimizados
+numpy>=1.26.0
+scipy>=1.11.0
+
+# ONNX Runtime para Core ML (Mac M1)
+onnxruntime>=1.16.0
+
+# Utilitários
+python-multipart>=0.0.6
+pydantic>=2.5.0
+websockets>=12.0
+
+# Testes e desenvolvimento
+pytest>=7.4.0
+httpx>=0.25.0
+
+# Performance e monitoramento
+psutil>=5.9.0  # Para métricas do sistema
