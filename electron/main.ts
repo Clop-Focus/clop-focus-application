@@ -194,3 +194,33 @@ ipcMain.handle('notifications:notifyFocusLoss', async (event, level: string) => 
     return { success: false, error: error.message }
   }
 })
+
+// Handlers IPC para modo de foco
+let isFocusModeEnabled = false
+
+ipcMain.handle('focusMode:toggle', async () => {
+  console.log('🔒 main: focusMode:toggle - estado atual:', isFocusModeEnabled)
+  
+  try {
+    isFocusModeEnabled = !isFocusModeEnabled
+    
+    if (isFocusModeEnabled) {
+      console.log('🔒 main: Modo foco ATIVADO - bloqueando notificações externas')
+      // Aqui implementaríamos a lógica para bloquear notificações externas
+      // Por enquanto, apenas logamos o status
+    } else {
+      console.log('🔒 main: Modo foco DESATIVADO - permitindo notificações externas')
+      // Aqui implementaríamos a lógica para permitir notificações externas
+    }
+    
+    return isFocusModeEnabled
+  } catch (error) {
+    console.error('🔒 main: erro ao alternar modo foco:', error)
+    return false
+  }
+})
+
+ipcMain.handle('focusMode:getStatus', async () => {
+  console.log('🔒 main: focusMode:getStatus - retornando:', isFocusModeEnabled)
+  return isFocusModeEnabled
+})

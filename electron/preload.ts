@@ -64,6 +64,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.error('🔔 preload: Erro ao notificar perda de foco:', error)
       return null
     }
+  },
+
+  // Modo de foco - bloquear notificações externas
+  toggleFocusMode: async () => {
+    console.log('🔒 preload: toggleFocusMode chamado')
+    try {
+      const result = await ipcRenderer.invoke('focusMode:toggle')
+      console.log('🔒 preload: Modo foco alternado via IPC:', result)
+      return result
+    } catch (error) {
+      console.error('🔒 preload: Erro ao alternar modo foco:', error)
+      return false
+    }
+  },
+
+  // Verificar status do modo foco
+  getFocusModeStatus: async () => {
+    console.log('🔒 preload: getFocusModeStatus chamado')
+    try {
+      const result = await ipcRenderer.invoke('focusMode:getStatus')
+      console.log('🔒 preload: Status do modo foco via IPC:', result)
+      return result
+    } catch (error) {
+      console.error('🔒 preload: Erro ao verificar status do modo foco:', error)
+      return false
+    }
   }
 })
 

@@ -75,6 +75,30 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
       console.error("\u{1F514} preload: Erro ao notificar perda de foco:", error);
       return null;
     }
+  },
+  // Modo de foco - bloquear notificações externas
+  toggleFocusMode: async () => {
+    console.log("\u{1F512} preload: toggleFocusMode chamado");
+    try {
+      const result = await import_electron.ipcRenderer.invoke("focusMode:toggle");
+      console.log("\u{1F512} preload: Modo foco alternado via IPC:", result);
+      return result;
+    } catch (error) {
+      console.error("\u{1F512} preload: Erro ao alternar modo foco:", error);
+      return false;
+    }
+  },
+  // Verificar status do modo foco
+  getFocusModeStatus: async () => {
+    console.log("\u{1F512} preload: getFocusModeStatus chamado");
+    try {
+      const result = await import_electron.ipcRenderer.invoke("focusMode:getStatus");
+      console.log("\u{1F512} preload: Status do modo foco via IPC:", result);
+      return result;
+    } catch (error) {
+      console.error("\u{1F512} preload: Erro ao verificar status do modo foco:", error);
+      return false;
+    }
   }
 });
 import_electron.contextBridge.exposeInMainWorld("overlay", {

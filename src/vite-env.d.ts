@@ -7,6 +7,8 @@ interface ElectronAPI {
   getNotificationPermission: () => Promise<NotificationPermission>
   sendSystemNotification: (title: string, options?: NotificationOptions) => Promise<any>
   notifyFocusLoss: (level: string) => Promise<any>
+  toggleFocusMode: () => Promise<boolean>
+  getFocusModeStatus: () => Promise<boolean>
 }
 
 // API para overlay transparente sempre-no-topo
