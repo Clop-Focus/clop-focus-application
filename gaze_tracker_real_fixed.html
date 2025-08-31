@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaze Tracker Real - ClopFocus (Corrigido)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #7c2d92 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #60a5fa;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        
+        .video-section {
+            position: relative;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        
+        #videoElement {
+            width: 640px;
+            height: 480px;
+            border: 3px solid #3b82f6;
+            border-radius: 10px;
+            background: #000;
+        }
+        
+        #gazeCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 640px;
+            height: 480px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .connection-status {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        
+        .status-connected { 
+            background: rgba(16, 185, 129, 0.2); 
+            border: 1px solid #10b981;
+        }
+        .status-disconnected { 
+            background: rgba(239, 68, 68, 0.2); 
+            border: 1px solid #ef4444;
+        }
+        .status-connecting { 
+            background: rgba(245, 158, 11, 0.2); 
+            border: 1px solid #f59e0b;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .metric {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+        
+        .metric-label {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        
+        .gaze-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(3, 80px);
+            grid-template-rows: repeat(3, 80px);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .gaze-cell {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        
+        .gaze-cell.active {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+        }
+        
+        .logs {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            height: 200px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .log-info { background: rgba(59, 130, 246, 0.2); }
+        .log-success { background: rgba(16, 185, 129, 0.2); }
+        .log-warning { background: rgba(245, 158, 11, 0.2); }
+        .log-error { background: rgba(239, 68, 68, 0.2); }
+        
+        .debug-info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Gaze Tracker Real (Corrigido)</h1>
+        
+        <div class="connection-status" id="connectionStatus">
+            Status: Desconectado
+        </div>
+        
+        <div class="debug-info" id="debugInfo">
+            <strong>Debug Info:</strong><br>
+            WebSocket: Desconectado<br>
+            Câmera: Inativa<br>
+            Canvas: Não configurado<br>
+            Session ID: Nenhum
+        </div>
+        
+        <div class="video-section">
+            <video id="videoElement" autoplay playsinline muted></video>
+            <canvas id="gazeCanvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn" onclick="startCamera()">📷 Iniciar Câmera</button>
+            <button id="stopBtn" onclick="stopCamera()" disabled>⏹️ Parar Câmera</button>
+            <button id="connectBtn" onclick="connectWebSocket()" disabled>🔌 Conectar Backend</button>
+            <button id="trackingBtn" onclick="toggleTracking()" disabled>🎯 Iniciar Tracking</button>
+            <button onclick="calibrateGaze()">🎛️ Calibrar</button>
+            <button onclick="debugSystem()">🐛 Debug</button>
+            <button onclick="testConnection()">🧪 Testar Conexão</button>
+            <button onclick="reconnectWebSocket()">🔄 Reconectar</button>
+        </div>
+        
+        <div class="gaze-grid" id="gazeGrid">
+            <div class="gaze-cell" data-region="top-left">Cima-Esq</div>
+            <div class="gaze-cell" data-region="top">Cima</div>
+            <div class="gaze-cell" data-region="top-right">Cima-Dir</div>
+            <div class="gaze-cell" data-region="left">Esquerda</div>
+            <div class="gaze-cell" data-region="center">Centro</div>
+            <div class="gaze-cell" data-region="right">Direita</div>
+            <div class="gaze-cell" data-region="bottom-left">Baixo-Esq</div>
+            <div class="gaze-cell" data-region="bottom">Baixo</div>
+            <div class="gaze-cell" data-region="bottom-right">Baixo-Dir</div>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="gazeX">0</div>
+                <div class="metric-label">Gaze X</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="gazeY">0</div>
+                <div class="metric-label">Gaze Y</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="confidence">0%</div>
+                <div class="metric-label">Confiança</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="attention">0%</div>
+                <div class="metric-label">Atenção</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="onScreen">--</div>
+                <div class="metric-label">Na Tela</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="fps">0</div>
+                <div class="metric-label">FPS</div>
+            </div>
+        </div>
+        
+        <div class="logs" id="logs">
+            <h3>📊 Logs do Sistema</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        let state = {
+            stream: null,
+            video: null,
+            canvas: null,
+            ctx: null,
+            websocket: null,
+            sessionId: null,
+            isTracking: false,
+            isCalibrating: false,
+            performance: { frameCount: 0, lastTime: 0, fps: 0 },
+            lastGazeData: null,
+            keepaliveInterval: null
+        };
+        
+        // Elementos DOM
+        const elements = {
+            video: document.getElementById('videoElement'),
+            canvas: document.getElementById('gazeCanvas'),
+            startBtn: document.getElementById('startBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            connectBtn: document.getElementById('connectBtn'),
+            trackingBtn: document.getElementById('trackingBtn'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            logContainer: document.getElementById('logContainer'),
+            debugInfo: document.getElementById('debugInfo')
+        };
+        
+        // Função de log
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-entry log-${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            elements.logContainer.appendChild(div);
+            elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
+            
+            if (elements.logContainer.children.length > 50) {
+                elements.logContainer.removeChild(elements.logContainer.firstChild);
+            }
+            
+            // Atualizar debug info
+            updateDebugInfo();
+        }
+        
+        // Atualizar debug info
+        function updateDebugInfo() {
+            const wsStatus = state.websocket ? 
+                (state.websocket.readyState === WebSocket.OPEN ? 'Conectado' : 'Desconectado') : 
+                'Nenhum';
+            
+            const cameraStatus = state.video ? 'Ativa' : 'Inativa';
+            const canvasStatus = state.canvas ? 'Configurado' : 'Não configurado';
+            const sessionStatus = state.sessionId || 'Nenhum';
+            
+            elements.debugInfo.innerHTML = `
+                <strong>Debug Info:</strong><br>
+                WebSocket: ${wsStatus}<br>
+                Câmera: ${cameraStatus}<br>
+                Canvas: ${canvasStatus}<br>
+                Session ID: ${sessionStatus}
+            `;
+        }
+        
+        // Atualizar status de conexão
+        function updateConnectionStatus(status, message) {
+            elements.connectionStatus.className = `connection-status status-${status}`;
+            elements.connectionStatus.textContent = `Status: ${message}`;
+            updateDebugInfo();
+        }
+        
+        // Atualizar métricas
+        function updateMetrics(gazeData) {
+            if (!gazeData) return;
+            
+            document.getElementById('gazeX').textContent = Math.round(gazeData.gaze?.h || 0);
+            document.getElementById('gazeY').textContent = Math.round(gazeData.gaze?.v || 0);
+            document.getElementById('confidence').textContent = `${Math.round((gazeData.confidence || 0) * 100)}%`;
+            document.getElementById('attention').textContent = `${Math.round((gazeData.attention || 0) * 100)}%`;
+            document.getElementById('onScreen').textContent = gazeData.on_screen ? 'Sim' : 'Não';
+            document.getElementById('fps').textContent = Math.round(state.performance.fps);
+        }
+        
+        // Determinar região atual
+        function getCurrentRegion(gazeData) {
+            if (!gazeData || !gazeData.gaze) return 'Centro';
+            
+            const x = gazeData.gaze.h;
+            const y = gazeData.gaze.v;
+            
+            if (Math.abs(x) < 0.1 && Math.abs(y) < 0.1) return 'Centro';
+            if (y < -0.3) return 'Cima';
+            if (y > 0.3) return 'Baixo';
+            if (x < -0.3) return 'Esquerda';
+            if (x > 0.3) return 'Direita';
+            
+            return 'Centro';
+        }
+        
+        // Atualizar grid de gaze
+        function updateGazeGrid(gazeData) {
+            const region = getCurrentRegion(gazeData).toLowerCase();
+            document.querySelectorAll('.gaze-cell').forEach(cell => {
+                cell.classList.remove('active');
+                if (cell.textContent.toLowerCase().includes(region)) {
+                    cell.classList.add('active');
+                }
+            });
+        }
+        
+        // Iniciar câmera
+        async function startCamera() {
+            try {
+                log('🔐 Solicitando acesso à câmera...', 'info');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 }
+                });
+                
+                log('✅ Permissão concedida!', 'success');
+                
+                // Configurar estado
+                state.stream = stream;
+                state.video = elements.video;
+                
+                // Configurar vídeo
+                state.video.srcObject = stream;
+                
+                // Aguardar carregamento
+                state.video.onloadedmetadata = () => {
+                    log(`📹 Vídeo carregado: ${state.video.videoWidth}x${state.video.videoHeight}`, 'success');
+                    
+                    // Configurar canvas
+                    state.canvas = elements.canvas;
+                    state.ctx = state.canvas.getContext('2d');
+                    
+                    // Configurar dimensões
+                    state.canvas.width = state.video.videoWidth;
+                    state.canvas.height = state.video.videoHeight;
+                    
+                    log(`🎨 Canvas configurado: ${state.canvas.width}x${state.canvas.height}`, 'success');
+                    
+                    // Atualizar botões
+                    elements.startBtn.disabled = true;
+                    elements.stopBtn.disabled = false;
+                    elements.connectBtn.disabled = false;
+                    
+                    updateConnectionStatus('disconnected', 'Câmera ativa - Conecte ao backend');
+                    updateDebugInfo();
+                };
+                
+            } catch (error) {
+                log(`❌ Erro ao acessar câmera: ${error.message}`, 'error');
+            }
+        }
+        
+        // Parar câmera
+        function stopCamera() {
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+                state.video = null;
+                state.canvas = null;
+                state.ctx = null;
+                
+                log('🛑 Câmera parada', 'info');
+                
+                elements.startBtn.disabled = false;
+                elements.stopBtn.disabled = true;
+                elements.connectBtn.disabled = true;
+                elements.trackingBtn.disabled = true;
+                
+                updateConnectionStatus('disconnected', 'Desconectado');
+                updateDebugInfo();
+                
+                // Parar keepalive
+                stopKeepalive();
+                
+                // Limpar canvas
+                if (state.ctx) {
+                    state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
+                }
+            }
+        }
+        
+        // Testar conexão simples
+        function testConnection() {
+            try {
+                log('🧪 Testando conexão WebSocket...', 'info');
+                
+                // Gerar ID de sessão único
+                const testSessionId = 'test_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Conectar ao WebSocket
+                const wsUrl = `ws://localhost:8000/gaze/ws/${testSessionId}`;
+                log(`🔌 Tentando conectar: ${wsUrl}`, 'info');
+                
+                const testWs = new WebSocket(wsUrl);
+                
+                testWs.onopen = () => {
+                    log('✅ Teste de conexão: WebSocket conectado!', 'success');
+                    
+                    // Enviar ping
+                    const pingMessage = { type: 'ping', timestamp: Date.now() };
+                    testWs.send(JSON.stringify(pingMessage));
+                    log('🏓 Ping enviado para teste', 'info');
+                    
+                    // Fechar após 2 segundos
+                    setTimeout(() => {
+                        testWs.close();
+                        log('🔌 Teste de conexão concluído', 'info');
+                    }, 2000);
+                };
+                
+                testWs.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📥 Resposta do teste: ${JSON.stringify(data)}`, 'info');
+                    } catch (error) {
+                        log(`📥 Resposta do teste (texto): ${event.data}`, 'info');
+                    }
+                };
+                
+                testWs.onerror = (error) => {
+                    log(`❌ Erro no teste: ${error}`, 'error');
+                };
+                
+                testWs.onclose = () => {
+                    log('🔌 Teste de conexão fechado', 'info');
+                };
+                
+            } catch (error) {
+                log(`❌ Erro ao testar conexão: ${error.message}`, 'error');
+            }
+        }
+        
+        // Conectar WebSocket
+        function connectWebSocket() {
+            if (!state.video) {
+                log('❌ Câmera não está ativa', 'error');
+                return;
+            }
+            
+            try {
+                // Gerar ID de sessão único
+                state.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Conectar ao WebSocket
+                const wsUrl = `ws://localhost:8000/gaze/ws/${state.sessionId}`;
+                state.websocket = new WebSocket(wsUrl);
+                
+                updateConnectionStatus('connecting', 'Conectando...');
+                log(`🔌 Conectando ao WebSocket: ${wsUrl}`, 'info');
+                
+                state.websocket.onopen = () => {
+                    updateConnectionStatus('connected', 'Conectado ao backend');
+                    log('✅ WebSocket conectado!', 'success');
+                    elements.trackingBtn.disabled = false;
+                    updateDebugInfo();
+                    
+                    // Iniciar keepalive
+                    startKeepalive();
+                };
+                
+                state.websocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        log(`❌ Erro ao processar mensagem: ${error.message}`, 'error');
+                    }
+                };
+                
+                state.websocket.onerror = (error) => {
+                    updateConnectionStatus('disconnected', 'Erro de conexão');
+                    log(`❌ Erro no WebSocket: ${error}`, 'error');
+                    updateDebugInfo();
+                };
+                
+                state.websocket.onclose = (event) => {
+                    updateConnectionStatus('disconnected', 'Desconectado');
+                    log(`🔌 WebSocket fechado: ${event.code} - ${event.reason}`, 'warning');
+                    elements.trackingBtn.disabled = true;
+                    
+                    // Parar keepalive
+                    stopKeepalive();
+                    
+                    updateDebugInfo();
+                };
+                
+            } catch (error) {
+                log(`❌ Erro ao conectar WebSocket: ${error.message}`, 'error');
+            }
+        }
+        
+        // Processar mensagens do WebSocket
+        function handleWebSocketMessage(data) {
+            if (data.type === 'focus_alert') {
+                log(`🚨 ${data.message}`, 'warning');
+            } else if (data.type === 'no_face_alert') {
+                log(`👤 ${data.message}`, 'warning');
+            } else if (data.type === 'detection_alert') {
+                log(`⚠️ ${data.message}`, 'warning');
+            } else if (data.type === 'pong') {
+                // Ping/pong para manter conexão
+                return;
+            } else {
+                // Dados de gaze
+                state.lastGazeData = data;
+                updateMetrics(data);
+                updateGazeGrid(data);
+                drawGazeOverlay(data);
+                
+                // Atualizar performance
+                updatePerformance();
+            }
+        }
+        
+        // Alternar tracking
+        function toggleTracking() {
+            if (state.isTracking) {
+                state.isTracking = false;
+                elements.trackingBtn.textContent = '🎯 Iniciar Tracking';
+                log('🛑 Tracking parado', 'info');
+            } else {
+                if (!state.websocket || state.websocket.readyState !== WebSocket.OPEN) {
+                    log('❌ WebSocket não está conectado', 'error');
+                    return;
+                }
+                
+                state.isTracking = true;
+                elements.trackingBtn.textContent = '⏹️ Parar Tracking';
+                log('🎯 Tracking iniciado', 'success');
+                
+                // Iniciar loop de captura
+                captureFrame();
+            }
+        }
+        
+        // Capturar frame e enviar
+        function captureFrame() {
+            if (!state.isTracking || !state.video || !state.ctx) return;
+            
+            try {
+                // Capturar frame do vídeo
+                state.ctx.drawImage(state.video, 0, 0, state.canvas.width, state.canvas.height);
+                
+                // Converter para base64
+                const frameData = state.canvas.toDataURL('image/jpeg', 0.8);
+                const base64Data = frameData.split(',')[1];
+                
+                // Enviar via WebSocket
+                if (state.websocket && state.websocket.readyState === WebSocket.OPEN) {
+                    const message = {
+                        type: 'frame',
+                        data: base64Data
+                    };
+                    state.websocket.send(JSON.stringify(message));
+                }
+                
+            } catch (error) {
+                log(`❌ Erro ao capturar frame: ${error.message}`, 'error');
+            }
+            
+            // Continuar loop
+            if (state.isTracking) {
+                requestAnimationFrame(captureFrame);
+            }
+        }
+        
+        // Desenhar overlay de gaze
+        function drawGazeOverlay(gazeData) {
+            if (!state.ctx || !state.canvas || !gazeData || !gazeData.gaze) return;
+            
+            // Limpar canvas
+            state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
+            
+            const centerX = state.canvas.width / 2;
+            const centerY = state.canvas.height / 2;
+            
+            // Calcular posição do gaze na tela
+            const gazeX = centerX + (gazeData.gaze.h * centerX);
+            const gazeY = centerY + (gazeData.gaze.v * centerY);
+            
+            // Desenhar ponto de gaze
+            state.ctx.fillStyle = '#f59e0b';
+            state.ctx.beginPath();
+            state.ctx.arc(gazeX, gazeY, 15, 0, 2 * Math.PI);
+            state.ctx.fill();
+            
+            // Borda
+            state.ctx.strokeStyle = '#ffffff';
+            state.ctx.lineWidth = 3;
+            state.ctx.stroke();
+            
+            // Linha do centro
+            state.ctx.strokeStyle = '#3b82f6';
+            state.ctx.lineWidth = 2;
+            state.ctx.setLineDash([5, 5]);
+            state.ctx.beginPath();
+            state.ctx.moveTo(centerX, centerY);
+            state.ctx.lineTo(gazeX, gazeY);
+            state.ctx.stroke();
+            state.ctx.setLineDash([]);
+            
+            // Informações
+            state.ctx.fillStyle = '#ffffff';
+            state.ctx.font = '16px Arial';
+            state.ctx.fillText(`Gaze: (${gazeData.gaze.h.toFixed(3)}, ${gazeData.gaze.v.toFixed(3)})`, 10, 30);
+            state.ctx.fillText(`Conf: ${(gazeData.confidence * 100).toFixed(0)}%`, 10, 50);
+            state.ctx.fillText(`Atenção: ${(gazeData.attention * 100).toFixed(0)}%`, 10, 70);
+            state.ctx.fillText(`Na Tela: ${gazeData.on_screen ? 'Sim' : 'Não'}`, 10, 90);
+        }
+        
+        // Atualizar performance
+        function updatePerformance() {
+            const now = performance.now();
+            state.performance.frameCount++;
+            
+            if (now - state.performance.lastTime >= 1000) {
+                state.performance.fps = state.performance.frameCount;
+                state.performance.frameCount = 0;
+                state.performance.lastTime = now;
+            }
+        }
+        
+        // Calibrar gaze
+        function calibrateGaze() {
+            if (state.isCalibrating) {
+                log('⚠️ Calibração já em andamento', 'warning');
+                return;
+            }
+            
+            if (!state.websocket || state.websocket.readyState !== WebSocket.OPEN) {
+                log('❌ WebSocket não está conectado', 'error');
+                return;
+            }
+            
+            state.isCalibrating = true;
+            log('🎛️ Iniciando calibração...', 'info');
+            
+            // Capturar frame atual para calibração
+            if (state.video && state.ctx) {
+                state.ctx.drawImage(state.video, 0, 0, state.canvas.width, state.canvas.height);
+                const frameData = state.canvas.toDataURL('image/jpeg', 0.8);
+                const base64Data = frameData.split(',')[1];
+                
+                // Enviar frame de calibração
+                const message = {
+                    type: 'frame',
+                    data: base64Data
+                };
+                state.websocket.send(JSON.stringify(message));
+                
+                log('📸 Frame de calibração enviado', 'info');
+            }
+            
+            // Resetar calibração após 2 segundos
+            setTimeout(() => {
+                state.isCalibrating = false;
+                log('✅ Calibração concluída!', 'success');
+            }, 2000);
+        }
+        
+        // Iniciar keepalive
+        function startKeepalive() {
+            if (state.keepaliveInterval) {
+                clearInterval(state.keepaliveInterval);
+            }
+            
+            state.keepaliveInterval = setInterval(() => {
+                if (state.websocket && state.websocket.readyState === WebSocket.OPEN) {
+                    try {
+                        const pingMessage = {
+                            type: 'ping',
+                            timestamp: Date.now()
+                        };
+                        state.websocket.send(JSON.stringify(pingMessage));
+                        log('🏓 Keepalive ping enviado', 'info');
+                    } catch (error) {
+                        log(`❌ Erro no keepalive: ${error.message}`, 'error');
+                    }
+                } else {
+                    log('⚠️ WebSocket não está aberto, parando keepalive', 'warning');
+                    stopKeepalive();
+                }
+            }, 30000); // Ping a cada 30 segundos
+            
+            log('🔄 Keepalive iniciado (30s)', 'info');
+        }
+        
+        // Parar keepalive
+        function stopKeepalive() {
+            if (state.keepaliveInterval) {
+                clearInterval(state.keepaliveInterval);
+                state.keepaliveInterval = null;
+                log('🛑 Keepalive parado', 'info');
+            }
+        }
+        
+        // Reconectar WebSocket
+        function reconnectWebSocket() {
+            if (state.websocket) {
+                log('🔄 Fechando conexão atual...', 'info');
+                state.websocket.close();
+            }
+            
+            setTimeout(() => {
+                log('🔄 Tentando reconectar...', 'info');
+                connectWebSocket();
+            }, 1000);
+        }
+        
+        // Debug do sistema
+        function debugSystem() {
+            log('🐛 === DEBUG SISTEMA ===', 'info');
+            log(`📹 Stream: ${state.stream ? 'Ativo' : 'Nulo'}`, 'info');
+            log(`🎥 Vídeo: ${state.video ? 'Ativo' : 'Nulo'}`, 'info');
+            log(`🎨 Canvas: ${state.canvas ? 'Ativo' : 'Nulo'}`, 'info');
+            log(`🔌 WebSocket: ${state.websocket ? 'Ativo' : 'Nulo'}`, 'info');
+            log(`🎯 Tracking: ${state.isTracking ? 'Ativo' : 'Inativo'}`, 'info');
+            log(`🎛️ Calibrando: ${state.isCalibrating ? 'Sim' : 'Não'}`, 'info');
+            log(`🆔 Session ID: ${state.sessionId || 'Nulo'}`, 'info');
+            
+            if (state.video) {
+                log(`📐 Dimensões: ${state.video.videoWidth}x${state.video.videoHeight}`, 'info');
+            }
+            
+            if (state.canvas) {
+                log(`🎨 Canvas: ${state.canvas.width}x${state.canvas.height}`, 'info');
+            }
+            
+            if (state.websocket) {
+                log(`🔌 Estado WebSocket: ${state.websocket.readyState}`, 'info');
+            }
+            
+            log('🐛 === FIM DEBUG ===', 'info');
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Gaze Tracker Real (Corrigido) inicializado', 'success');
+            updateConnectionStatus('disconnected', 'Aguardando inicialização');
+            updateDebugInfo();
+        });
+    </script>
+</body>
+</html>
