@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug WebSocket - ClopFocus</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #60a5fa;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        
+        .status.connected { 
+            background: rgba(16, 185, 129, 0.2); 
+            border: 1px solid #10b981;
+        }
+        .status.disconnected { 
+            background: rgba(239, 68, 68, 0.2); 
+            border: 1px solid #ef4444;
+        }
+        .status.connecting { 
+            background: rgba(245, 158, 11, 0.2); 
+            border: 1px solid #f59e0b;
+        }
+        
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .logs {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .log-info { background: rgba(59, 130, 246, 0.2); }
+        .log-success { background: rgba(16, 185, 129, 0.2); }
+        .log-warning { background: rgba(245, 158, 11, 0.2); }
+        .log-error { background: rgba(239, 68, 68, 0.2); }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug WebSocket</h1>
+        
+        <div class="status" id="status">
+            Status: Desconectado
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Testes de Conexão</h3>
+            <button onclick="testConnection()">🔌 Testar Conexão</button>
+            <button onclick="testPing()">🏓 Testar Ping</button>
+            <button onclick="testFrame()">📸 Testar Frame</button>
+            <button onclick="clearLogs()">🗑️ Limpar Logs</button>
+        </div>
+        
+        <div class="logs" id="logs">
+            <h3>📊 Logs do Sistema</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let sessionId = null;
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-entry log-${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logContainer').appendChild(div);
+            document.getElementById('logs').scrollTop = document.getElementById('logs').scrollHeight;
+        }
+        
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = `Status: ${message}`;
+        }
+        
+        function testConnection() {
+            try {
+                // Gerar ID de sessão único
+                sessionId = 'debug_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Conectar ao WebSocket
+                const wsUrl = `ws://localhost:8000/gaze/ws/${sessionId}`;
+                log(`🔌 Tentando conectar: ${wsUrl}`, 'info');
+                
+                websocket = new WebSocket(wsUrl);
+                
+                updateStatus('connecting', 'Conectando...');
+                
+                websocket.onopen = () => {
+                    updateStatus('connected', 'Conectado!');
+                    log('✅ WebSocket conectado com sucesso!', 'success');
+                };
+                
+                websocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📥 Mensagem recebida: ${JSON.stringify(data)}`, 'info');
+                    } catch (error) {
+                        log(`📥 Mensagem recebida (texto): ${event.data}`, 'info');
+                    }
+                };
+                
+                websocket.onerror = (error) => {
+                    updateStatus('disconnected', 'Erro de conexão');
+                    log(`❌ Erro no WebSocket: ${error}`, 'error');
+                };
+                
+                websocket.onclose = (event) => {
+                    updateStatus('disconnected', 'Desconectado');
+                    log(`🔌 WebSocket fechado: ${event.code} - ${event.reason}`, 'warning');
+                };
+                
+            } catch (error) {
+                log(`❌ Erro ao criar WebSocket: ${error.message}`, 'error');
+                updateStatus('disconnected', 'Erro ao criar conexão');
+            }
+        }
+        
+        function testPing() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                log('❌ WebSocket não está conectado', 'error');
+                return;
+            }
+            
+            try {
+                const pingMessage = {
+                    type: 'ping',
+                    timestamp: Date.now()
+                };
+                
+                websocket.send(JSON.stringify(pingMessage));
+                log(`🏓 Ping enviado: ${JSON.stringify(pingMessage)}`, 'info');
+                
+            } catch (error) {
+                log(`❌ Erro ao enviar ping: ${error.message}`, 'error');
+            }
+        }
+        
+        function testFrame() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                log('❌ WebSocket não está conectado', 'error');
+                return;
+            }
+            
+            try {
+                // Criar um frame de teste simples (1x1 pixel preto)
+                const canvas = document.createElement('canvas');
+                canvas.width = 1;
+                canvas.height = 1;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, 1, 1);
+                
+                const frameData = canvas.toDataURL('image/jpeg', 0.8);
+                const base64Data = frameData.split(',')[1];
+                
+                const frameMessage = {
+                    type: 'frame',
+                    data: base64Data
+                };
+                
+                websocket.send(JSON.stringify(frameMessage));
+                log(`📸 Frame de teste enviado (${base64Data.length} bytes)`, 'info');
+                
+            } catch (error) {
+                log(`❌ Erro ao enviar frame: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            log('🗑️ Logs limpos', 'info');
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Debug WebSocket inicializado', 'success');
+            updateStatus('disconnected', 'Aguardando teste');
+        });
+    </script>
+</body>
+</html>

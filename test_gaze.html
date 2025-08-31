@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaze Tracker Roboflow - ClopFocus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #7c2d92 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 30px;
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, #60a5fa, #a78bfa, #ec4899);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .video-section {
+            position: relative;
+        }
+        
+        #videoElement {
+            width: 100%;
+            height: 300px;
+            border-radius: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            background: #000;
+            object-fit: cover;
+        }
+        
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            border-radius: 16px;
+        }
+        
+        .gaze-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+        }
+        
+        .status-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .status-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-connected { 
+            background: #10b981; 
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        .status-disconnected { 
+            background: #6b7280; 
+        }
+        .status-active { 
+            background: #3b82f6; 
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+        .status-error { 
+            background: #ef4444; 
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        button:hover:not(:disabled) {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .metric {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .metric:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            background: linear-gradient(45deg, #60a5fa, #a78bfa);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+        
+        .gaze-visualization {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .gaze-grid {
+            display: inline-grid;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .gaze-cell {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .gaze-cell.active {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+        }
+        
+        .logs {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 16px;
+            margin-top: 25px;
+            height: 180px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .log-entry {
+            margin: 6px 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+        }
+        
+        .log-info { 
+            background: rgba(59, 130, 246, 0.15); 
+            border-left-color: #3b82f6;
+            color: #93c5fd;
+        }
+        .log-success { 
+            background: rgba(16, 185, 129, 0.15); 
+            border-left-color: #10b981;
+            color: #6ee7b7;
+        }
+        .log-warning { 
+            background: rgba(245, 158, 11, 0.15); 
+            border-left-color: #f59e0b;
+            color: #fcd34d;
+        }
+        .log-error { 
+            background: rgba(239, 68, 68, 0.15); 
+            border-left-color: #ef4444;
+            color: #fca5a5;
+        }
+        
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Gaze Tracker Roboflow</h1>
+        
+        <div class="main-grid">
+            <div class="video-section">
+                <video id="videoElement" autoplay playsinline muted></video>
+                <div class="video-overlay">
+                    <canvas id="gazeCanvas" class="gaze-canvas"></canvas>
+                </div>
+            </div>
+            
+            <div class="status-panel">
+                <div class="status-card">
+                    <div class="status-header">
+                        <div id="cameraIndicator" class="status-indicator status-disconnected"></div>
+                        <h3>📷 Câmera</h3>
+                    </div>
+                    <p id="cameraStatus">Clique para ativar</p>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-header">
+                        <div id="faceIndicator" class="status-indicator status-disconnected"></div>
+                        <h3>👤 Detecção Facial</h3>
+                    </div>
+                    <p id="faceStatus">Aguardando câmera</p>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-header">
+                        <div id="trackingIndicator" class="status-indicator status-disconnected"></div>
+                        <h3>🎯 Tracking</h3>
+                    </div>
+                    <p id="trackingStatus">Parado</p>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-header">
+                        <div id="focusIndicator" class="status-indicator status-disconnected"></div>
+                        <h3>🧠 Foco</h3>
+                    </div>
+                    <p id="focusStatus">Não detectado</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="cameraBtn" onclick="toggleCamera()">📷 Ativar Câmera</button>
+            <button id="trackingBtn" onclick="toggleTracking()" disabled>🎯 Iniciar Tracking</button>
+            <button onclick="calibrateGaze()">🎛️ Calibrar</button>
+            <button onclick="resetMetrics()">🔄 Reset</button>
+        </div>
+        
+        <div class="gaze-visualization">
+            <h3>🗺️ Mapa de Olhar</h3>
+            <div class="gaze-grid" id="gazeGrid">
+                <div class="gaze-cell" data-region="top-left"></div>
+                <div class="gaze-cell" data-region="top"></div>
+                <div class="gaze-cell" data-region="top-right"></div>
+                <div class="gaze-cell" data-region="left"></div>
+                <div class="gaze-cell" data-region="center"></div>
+                <div class="gaze-cell" data-region="right"></div>
+                <div class="gaze-cell" data-region="bottom-left"></div>
+                <div class="gaze-cell" data-region="bottom"></div>
+                <div class="gaze-cell" data-region="bottom-right"></div>
+            </div>
+            <p id="currentRegion">Região: centro</p>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric">
+                <div id="yawAngle" class="metric-value">0°</div>
+                <div class="metric-label">Yaw (Horizontal)</div>
+            </div>
+            <div class="metric">
+                <div id="pitchAngle" class="metric-value">0°</div>
+                <div class="metric-label">Pitch (Vertical)</div>
+            </div>
+            <div class="metric">
+                <div id="gazeX" class="metric-value">0</div>
+                <div class="metric-label">Gaze X (px)</div>
+            </div>
+            <div class="metric">
+                <div id="gazeY" class="metric-value">0</div>
+                <div class="metric-label">Gaze Y (px)</div>
+            </div>
+            <div class="metric">
+                <div id="confidence" class="metric-value">0%</div>
+                <div class="metric-label">Confiança</div>
+            </div>
+            <div class="metric">
+                <div id="fps" class="metric-value">0</div>
+                <div class="metric-label">FPS Atual</div>
+            </div>
+            <div class="metric">
+                <div id="focusTime" class="metric-value">0s</div>
+                <div class="metric-label">Tempo Focado</div>
+            </div>
+            <div class="metric">
+                <div id="distance" class="metric-value">--</div>
+                <div class="metric-label">Distância (cm)</div>
+            </div>
+        </div>
+        
+        <div class="logs">
+            <h3>📊 Logs do Sistema</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIGURAÇÃO BASEADA NO MODELO ROBOFLOW =====
+        const CONFIG = {
+            // Parâmetros do modelo L2CS-Net
+            DISTANCE_TO_SCREEN: 600,      // distância em mm (padrão Roboflow)
+            FACE_HEIGHT_MM: 250,          // altura média do rosto humano em mm
+            
+            // Thresholds otimizados
+            MIN_FACE_CONFIDENCE: 0.7,     // confiança mínima para detecção facial
+            SMOOTHING_FACTOR: 0.25,       // suavização de gaze
+            TARGET_FPS: 20,               // FPS alvo para performance
+            
+            // Zonas de foco (baseadas em estudos de usabilidade)
+            FOCUS_ZONES: {
+                center: { x: [-0.15, 0.15], y: [-0.15, 0.15] },
+                deadZone: 0.05  // zona morta para reduzir jitter
+            },
+            
+            // Calibração automática
+            AUTO_CALIBRATION: true,
+            CALIBRATION_FRAMES: 60        // frames para calibração inicial
+        };
+        
+        // ===== ESTADO GLOBAL OTIMIZADO =====
+        const state = {
+            // Câmera e video
+            stream: null,
+            video: null,
+            canvas: null,
+            ctx: null,
+            
+            // Tracking
+            isTracking: false,
+            frameCount: 0,
+            lastFrameTime: 0,
+            
+            // Gaze data (baseado no formato Roboflow)
+            currentGaze: {
+                yaw: 0,          // ângulo horizontal em radianos
+                pitch: 0,        // ângulo vertical em radianos
+                confidence: 0,   // confiança da detecção
+                faceBox: null,   // bounding box do rosto
+                landmarks: [],   // pontos faciais
+                gazePoint: { x: 0, y: 0 }  // ponto de olhar na tela
+            },
+            
+            // Smoothing (EMA - Exponential Moving Average)
+            smoothed: {
+                yaw: 0,
+                pitch: 0,
+                gazeX: 0,
+                gazeY: 0
+            },
+            
+            // Métricas de foco
+            focus: {
+                isFocused: false,
+                startTime: null,
+                totalTime: 0,
+                currentRegion: 'center'
+            },
+            
+            // Performance
+            performance: {
+                fps: 0,
+                frameBuffer: [],
+                avgProcessingTime: 0
+            },
+            
+            // Calibração
+            calibration: {
+                isCalibrating: false,
+                offsetYaw: 0,
+                offsetPitch: 0,
+                frameCount: 0
+            }
+        };
+        
+        // Cache de elementos DOM
+        const elements = {
+            video: document.getElementById('videoElement'),
+            canvas: document.getElementById('gazeCanvas'),
+            cameraBtn: document.getElementById('cameraBtn'),
+            trackingBtn: document.getElementById('trackingBtn'),
+            logContainer: document.getElementById('logContainer'),
+            
+            // Indicadores
+            cameraIndicator: document.getElementById('cameraIndicator'),
+            faceIndicator: document.getElementById('faceIndicator'),
+            trackingIndicator: document.getElementById('trackingIndicator'),
+            focusIndicator: document.getElementById('focusIndicator'),
+            
+            // Status
+            cameraStatus: document.getElementById('cameraStatus'),
+            faceStatus: document.getElementById('faceStatus'),
+            trackingStatus: document.getElementById('trackingStatus'),
+            focusStatus: document.getElementById('focusStatus'),
+            
+            // Grid de gaze
+            gazeGrid: document.getElementById('gazeGrid'),
+            currentRegion: document.getElementById('currentRegion')
+        };
+        
+        // ===== FUNÇÕES MATEMÁTICAS BASEADAS NO ROBOFLOW =====
+        
+        // Converter ângulos de radianos para graus
+        function radToDeg(rad) {
+            return rad * 180 / Math.PI;
+        }
+        
+        // Calcular ponto de gaze na tela usando o método Roboflow
+        function calculateGazePoint(yaw, pitch, faceBox, imageWidth, imageHeight) {
+            if (!faceBox) return { x: imageWidth / 2, y: imageHeight / 2 };
+            
+            // Calcular escala baseada no tamanho do rosto
+            const lengthPerPixel = CONFIG.FACE_HEIGHT_MM / faceBox.height;
+            
+            // Calcular deslocamento usando trigonometria (método Roboflow)
+            let dx = -CONFIG.DISTANCE_TO_SCREEN * Math.tan(yaw) / lengthPerPixel;
+            let dy = -CONFIG.DISTANCE_TO_SCREEN * Math.cos(yaw) * Math.tan(pitch) / lengthPerPixel;
+            
+            // Verificar se está fora dos limites
+            if (isNaN(dx) || Math.abs(dx) > imageWidth * 2) dx = 0;
+            if (isNaN(dy) || Math.abs(dy) > imageHeight * 2) dy = 0;
+            
+            // Calcular ponto final
+            const gazeX = imageWidth / 2 + dx;
+            const gazeY = imageHeight / 2 + dy;
+            
+            return { x: gazeX, y: gazeY };
+        }
+        
+        // Smoothing exponencial para reduzir jitter
+        function applySmoothingEMA(newValue, oldValue, alpha = CONFIG.SMOOTHING_FACTOR) {
+            return alpha * newValue + (1 - alpha) * oldValue;
+        }
+        
+        // Determinar região do olhar baseada no gaze point
+        function getGazeRegion(gazeX, gazeY, imageWidth, imageHeight) {
+            const normalizedX = (gazeX - imageWidth / 2) / (imageWidth / 2);
+            const normalizedY = (gazeY - imageHeight / 2) / (imageHeight / 2);
+            
+            // Aplicar dead zone
+            if (Math.abs(normalizedX) <= CONFIG.FOCUS_ZONES.deadZone && 
+                Math.abs(normalizedY) <= CONFIG.FOCUS_ZONES.deadZone) {
+                return 'center';
+            }
+            
+            // Determinar região baseada em quadrantes
+            let region = '';
+            
+            if (normalizedY < -0.33) region += 'top';
+            else if (normalizedY > 0.33) region += 'bottom';
+            
+            if (normalizedX < -0.33) region += region ? '-left' : 'left';
+            else if (normalizedX > 0.33) region += region ? '-right' : 'right';
+            
+            return region || 'center';
+        }
+        
+        // ===== SIMULAÇÃO DE GAZE DETECTION (L2CS-Net Style) =====
+        function simulateL2CSGazeDetection(videoElement) {
+            const now = Date.now();
+            const time = now / 1000;
+            
+            // Simular movimento de olhar realista
+            const baseYaw = Math.sin(time * 0.4) * 0.5 + Math.sin(time * 1.2) * 0.1;
+            const basePitch = Math.cos(time * 0.3) * 0.3 + Math.cos(time * 0.8) * 0.05;
+            
+            // Adicionar ruído controlado
+            const noise = () => (Math.random() - 0.5) * 0.05;
+            
+            // Simular detecção de rosto (95% de sucesso)
+            const faceDetected = Math.random() > 0.05;
+            const confidence = faceDetected ? 0.8 + Math.random() * 0.2 : 0;
+            
+            if (!faceDetected) {
+                return { faceDetected: false, confidence: 0 };
+            }
+            
+            // Simular bounding box do rosto
+            const faceBox = {
+                x: videoElement.videoWidth / 2,
+                y: videoElement.videoHeight / 2,
+                width: videoElement.videoWidth * 0.3,
+                height: videoElement.videoHeight * 0.4
+            };
+            
+            return {
+                faceDetected: true,
+                confidence,
+                yaw: baseYaw + noise(),
+                pitch: basePitch + noise(),
+                faceBox,
+                landmarks: generateFaceLandmarks(faceBox), // Simular landmarks
+                timestamp: now
+            };
+        }
+        
+        // Gerar landmarks faciais simulados
+        function generateFaceLandmarks(faceBox) {
+            const landmarks = [];
+            const centerX = faceBox.x;
+            const centerY = faceBox.y;
+            
+            // Pontos principais: olhos, nariz, boca (formato Roboflow)
+            const points = [
+                { x: centerX - 30, y: centerY - 20 }, // olho esquerdo
+                { x: centerX + 30, y: centerY - 20 }, // olho direito
+                { x: centerX, y: centerY + 10 },      // nariz
+                { x: centerX, y: centerY + 40 },      // boca
+                { x: centerX - 50, y: centerY },      // bochecha esquerda
+                { x: centerX + 50, y: centerY }       // bochecha direita
+            ];
+            
+            return points;
+        }
+        
+        // ===== FUNÇÕES DE VISUALIZAÇÃO =====
+        
+        // Desenhar gaze na tela (estilo Roboflow)
+        function drawGazeVisualization(gazeData) {
+            const canvas = state.canvas;
+            const ctx = state.ctx;
+            const video = state.video;
+            
+            if (!ctx || !gazeData.faceDetected) return;
+            
+            // Limpar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const { faceBox, gazePoint, yaw, pitch } = gazeData;
+            
+            // Desenhar bounding box do rosto
+            if (faceBox) {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(
+                    faceBox.x - faceBox.width / 2,
+                    faceBox.y - faceBox.height / 2,
+                    faceBox.width,
+                    faceBox.height
+                );
+                
+                // Desenhar landmarks
+                ctx.fillStyle = '#10b981';
+                gazeData.landmarks.forEach(point => {
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            }
+            
+            // Desenhar seta de direção do gaze (método Roboflow)
+            if (faceBox) {
+                const arrowLength = Math.min(video.videoWidth, video.videoHeight) / 3;
+                const startX = faceBox.x;
+                const startY = faceBox.y;
+                
+                // Calcular direção da seta usando yaw e pitch
+                const dx = -arrowLength * Math.sin(yaw) * Math.cos(pitch);
+                const dy = -arrowLength * Math.sin(pitch);
+                
+                const endX = startX + dx;
+                const endY = startY + dy;
+                
+                // Desenhar seta
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                
+                // Linha principal
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                
+                // Ponta da seta
+                const angle = Math.atan2(dy, dx);
+                const headLength = 20;
+                
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(
+                    endX - headLength * Math.cos(angle - Math.PI / 6),
+                    endY - headLength * Math.sin(angle - Math.PI / 6)
+                );
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(
+                    endX - headLength * Math.cos(angle + Math.PI / 6),
+                    endY - headLength * Math.sin(angle + Math.PI / 6)
+                );
+                ctx.stroke();
+            }
+            
+            // Desenhar ponto de gaze
+            if (gazePoint) {
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(gazePoint.x, gazePoint.y, 12, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Borda do ponto
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            // Desenhar informações de debug
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px monospace';
+            ctx.fillText(`Yaw: ${radToDeg(yaw).toFixed(1)}°`, 10, 30);
+            ctx.fillText(`Pitch: ${radToDeg(pitch).toFixed(1)}°`, 10, 50);
+            ctx.fillText(`Conf: ${(gazeData.confidence * 100).toFixed(0)}%`, 10, 70);
+        }
+        
+        // Atualizar grid visual de gaze
+        function updateGazeGrid(region) {
+            // Limpar todas as células
+            document.querySelectorAll('.gaze-cell').forEach(cell => {
+                cell.classList.remove('active');
+            });
+            
+            // Ativar célula atual
+            const targetCell = document.querySelector(`[data-region="${region}"]`);
+            if (targetCell) {
+                targetCell.classList.add('active');
+            }
+            
+            elements.currentRegion.textContent = `Região: ${region}`;
+        }
+        
+        // ===== FUNÇÕES PRINCIPAIS =====
+        
+        // Processar frame com modelo L2CS-Net simulado
+        function processFrame() {
+            if (!state.isTracking || !state.video) return;
+            
+            const frameStart = performance.now();
+            
+            try {
+                // Obter dados de gaze (substitua por chamada real ao modelo)
+                const gazeData = simulateL2CSGazeDetection(state.video);
+                
+                if (gazeData.faceDetected && gazeData.confidence >= CONFIG.MIN_FACE_CONFIDENCE) {
+                    // Aplicar calibração se disponível
+                    let yaw = gazeData.yaw - state.calibration.offsetYaw;
+                    let pitch = gazeData.pitch - state.calibration.offsetPitch;
+                    
+                    // Aplicar smoothing
+                    state.smoothed.yaw = applySmoothingEMA(yaw, state.smoothed.yaw);
+                    state.smoothed.pitch = applySmoothingEMA(pitch, state.smoothed.pitch);
+                    
+                    // Calcular ponto de gaze na tela
+                    const gazePoint = calculateGazePoint(
+                        state.smoothed.yaw, 
+                        state.smoothed.pitch, 
+                        gazeData.faceBox, 
+                        state.video.videoWidth, 
+                        state.video.videoHeight
+                    );
+                    
+                    // Atualizar estado
+                    state.currentGaze = {
+                        ...gazeData,
+                        yaw: state.smoothed.yaw,
+                        pitch: state.smoothed.pitch,
+                        gazePoint
+                    };
+                    
+                    // Determinar região do olhar
+                    const region = getGazeRegion(
+                        gazePoint.x, 
+                        gazePoint.y, 
+                        state.video.videoWidth, 
+                        state.video.videoHeight
+                    );
+                    
+                    // Atualizar foco
+                    updateFocusStatus(region);
+                    
+                    // Atualizar UI
+                    updateMetrics();
+                    updateGazeGrid(region);
+                    drawGazeVisualization(state.currentGaze);
+                    
+                    // Atualizar indicadores
+                    updateStatusIndicators(true, true);
+                    
+                } else {
+                    // Sem rosto detectado
+                    updateStatusIndicators(false, false);
+                    clearCanvas();
+                }
+                
+                // Atualizar performance
+                updatePerformance(frameStart);
+                
+            } catch (error) {
+                addLog(`❌ Erro no processamento: ${error.message}`, 'error');
+            }
+            
+            // Agendar próximo frame
+            if (state.isTracking) {
+                requestAnimationFrame(processFrame);
+            }
+        }
+        
+        // Atualizar status de foco
+        function updateFocusStatus(region) {
+            const isInCenter = region === 'center';
+            
+            if (isInCenter && !state.focus.isFocused) {
+                state.focus.isFocused = true;
+                state.focus.startTime = Date.now();
+                addLog('✅ Foco detectado - região central', 'success');
+            } else if (!isInCenter && state.focus.isFocused) {
+                state.focus.isFocused = false;
+                if (state.focus.startTime) {
+                    const focusDuration = (Date.now() - state.focus.startTime) / 1000;
+                    state.focus.totalTime += focusDuration;
+                    addLog(`⏱️ Foco perdido - duração: ${focusDuration.toFixed(1)}s`, 'warning');
+                }
+            }
+            
+            state.focus.currentRegion = region;
+        }
+        
+        // Atualizar métricas na UI
+        function updateMetrics() {
+            const { yaw, pitch, gazePoint, confidence } = state.currentGaze;
+            
+            // Atualizar ângulos
+            document.getElementById('yawAngle').textContent = `${radToDeg(yaw).toFixed(1)}°`;
+            document.getElementById('pitchAngle').textContent = `${radToDeg(pitch).toFixed(1)}°`;
+            
+            // Atualizar coordenadas de gaze
+            document.getElementById('gazeX').textContent = Math.round(gazePoint.x);
+            document.getElementById('gazeY').textContent = Math.round(gazePoint.y);
+            
+            // Atualizar confiança
+            document.getElementById('confidence').textContent = `${Math.round(confidence * 100)}%`;
+            
+            // Atualizar tempo focado
+            if (state.focus.isFocused && state.focus.startTime) {
+                const currentFocusTime = (Date.now() - state.focus.startTime) / 1000;
+                document.getElementById('focusTime').textContent = `${currentFocusTime.toFixed(1)}s`;
+            }
+            
+            // Atualizar FPS
+            document.getElementById('fps').textContent = Math.round(state.performance.fps);
+            
+            // Atualizar distância (simulada)
+            const distance = CONFIG.DISTANCE_TO_SCREEN / 10; // mm para cm
+            document.getElementById('distance').textContent = `${distance.toFixed(0)}`;
+        }
+        
+        // Atualizar indicadores de status
+        function updateStatusIndicators(faceDetected, trackingActive) {
+            // Câmera
+            elements.cameraIndicator.className = 'status-indicator status-connected';
+            elements.cameraStatus.textContent = 'Ativa';
+            
+            // Face
+            if (faceDetected) {
+                elements.faceIndicator.className = 'status-indicator status-connected';
+                elements.faceStatus.textContent = 'Detectado';
+            } else {
+                elements.faceIndicator.className = 'status-indicator status-error';
+                elements.faceStatus.textContent = 'Não detectado';
+            }
+            
+            // Tracking
+            if (trackingActive) {
+                elements.trackingIndicator.className = 'status-indicator status-active';
+                elements.trackingStatus.textContent = 'Ativo';
+            } else {
+                elements.trackingIndicator.className = 'status-indicator status-disconnected';
+                elements.trackingStatus.textContent = 'Parado';
+            }
+            
+            // Foco
+            if (state.focus.isFocused) {
+                elements.focusIndicator.className = 'status-indicator status-connected';
+                elements.focusStatus.textContent = 'Focado';
+            } else {
+                elements.focusIndicator.className = 'status-indicator status-disconnected';
+                elements.focusStatus.textContent = 'Não focado';
+            }
+        }
+        
+        // Atualizar métricas de performance
+        function updatePerformance(frameStart) {
+            const frameTime = performance.now() - frameStart;
+            state.performance.frameBuffer.push(frameTime);
+            
+            // Manter apenas últimos 60 frames
+            if (state.performance.frameBuffer.length > 60) {
+                state.performance.frameBuffer.shift();
+            }
+            
+            // Calcular FPS médio
+            const avgFrameTime = state.performance.frameBuffer.reduce((a, b) => a + b, 0) / state.performance.frameBuffer.length;
+            state.performance.fps = 1000 / avgFrameTime;
+            state.performance.avgProcessingTime = avgFrameTime;
+        }
+        
+        // Limpar canvas
+        function clearCanvas() {
+            if (state.ctx) {
+                state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
+            }
+        }
+        
+        // ===== FUNÇÕES DE CONTROLE =====
+        
+        // Ativar/desativar câmera
+        async function toggleCamera() {
+            if (state.stream) {
+                // Desativar câmera
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+                state.video = null;
+                state.canvas = null;
+                state.ctx = null;
+                
+                elements.cameraBtn.textContent = '📷 Ativar Câmera';
+                elements.trackingBtn.disabled = true;
+                
+                updateStatusIndicators(false, false);
+                addLog('📷 Câmera desativada', 'info');
+                
+            } else {
+                // Ativar câmera
+                try {
+                    addLog('📷 Ativando câmera...', 'info');
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            width: { ideal: 640 }, 
+                            height: { ideal: 480 },
+                            frameRate: { ideal: CONFIG.TARGET_FPS }
+                        }
+                    });
+                    
+                    state.stream = stream;
+                    state.video = elements.video;
+                    state.canvas = elements.canvas;
+                    state.ctx = state.canvas.getContext('2d');
+                    
+                    // Configurar canvas
+                    state.canvas.width = state.video.videoWidth;
+                    state.canvas.height = state.video.videoHeight;
+                    
+                    // Aguardar carregamento do vídeo
+                    state.video.onloadedmetadata = () => {
+                        addLog(`✅ Câmera ativada: ${state.video.videoWidth}x${state.video.videoHeight}`, 'success');
+                        elements.cameraBtn.textContent = '📷 Desativar Câmera';
+                        elements.trackingBtn.disabled = false;
+                    };
+                    
+                } catch (error) {
+                    addLog(`❌ Erro ao ativar câmera: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // Iniciar/parar tracking
+        function toggleTracking() {
+            if (state.isTracking) {
+                // Parar tracking
+                state.isTracking = false;
+                elements.trackingBtn.textContent = '🎯 Iniciar Tracking';
+                addLog('🛑 Tracking parado', 'info');
+                
+                // Limpar canvas
+                clearCanvas();
+                
+            } else {
+                // Iniciar tracking
+                if (!state.video) {
+                    addLog('❌ Câmera não está ativa', 'error');
+                    return;
+                }
+                
+                state.isTracking = true;
+                elements.trackingBtn.textContent = '⏹️ Parar Tracking';
+                addLog('🎯 Tracking iniciado', 'success');
+                
+                // Iniciar loop de processamento
+                processFrame();
+            }
+        }
+        
+        // Calibrar gaze
+        function calibrateGaze() {
+            if (!state.video) {
+                addLog('❌ Câmera não está ativa', 'error');
+                return;
+            }
+            
+            if (state.calibration.isCalibrating) {
+                addLog('⚠️ Calibração já em andamento', 'warning');
+                return;
+            }
+            
+            addLog('🎛️ Iniciando calibração...', 'info');
+            state.calibration.isCalibrating = true;
+            state.calibration.frameCount = 0;
+            
+            // Simular calibração automática
+            const calibrationInterval = setInterval(() => {
+                state.calibration.frameCount++;
+                
+                if (state.calibration.frameCount >= CONFIG.CALIBRATION_FRAMES) {
+                    // Calibração concluída
+                    clearInterval(calibrationInterval);
+                    state.calibration.isCalibrating = false;
+                    
+                    // Aplicar offsets simulados
+                    state.calibration.offsetYaw = (Math.random() - 0.5) * 0.1;
+                    state.calibration.offsetPitch = (Math.random() - 0.5) * 0.1;
+                    
+                    addLog('✅ Calibração concluída!', 'success');
+                    addLog(`📐 Offsets aplicados: Yaw=${state.calibration.offsetYaw.toFixed(3)}, Pitch=${state.calibration.offsetPitch.toFixed(3)}`, 'info');
+                    
+                } else {
+                    addLog(`🎛️ Calibrando... ${state.calibration.frameCount}/${CONFIG.CALIBRATION_FRAMES}`, 'info');
+                }
+            }, 100);
+        }
+        
+        // Resetar métricas
+        function resetMetrics() {
+            state.focus.totalTime = 0;
+            state.focus.startTime = null;
+            state.focus.isFocused = false;
+            
+            state.performance.frameBuffer = [];
+            state.performance.fps = 0;
+            state.performance.avgProcessingTime = 0;
+            
+            // Resetar smoothing
+            state.smoothed = { yaw: 0, pitch: 0, gazeX: 0, gazeY: 0 };
+            
+            // Limpar UI
+            document.getElementById('focusTime').textContent = '0s';
+            document.getElementById('fps').textContent = '0';
+            updateGazeGrid('center');
+            
+            addLog('🔄 Métricas resetadas', 'info');
+        }
+
+        // Debug da câmera
+        function debugCamera() {
+            addLog('🐛 === DEBUG CÂMERA ===', 'info');
+            addLog(`📹 Stream: ${state.stream ? 'Ativo' : 'Nulo'}`, 'info');
+            addLog(`🎥 Vídeo: ${state.video ? 'Ativo' : 'Nulo'}`, 'info');
+            addLog(`🎨 Canvas: ${state.canvas ? 'Ativo' : 'Nulo'}`, 'info');
+            addLog(`🖌️ Context: ${state.ctx ? 'Ativo' : 'Nulo'}`, 'info');
+            
+            if (state.video) {
+                addLog(`📐 Dimensões do vídeo: ${state.video.videoWidth}x${state.video.videoHeight}`, 'info');
+                addLog(`▶️ Ready State: ${state.video.readyState}`, 'info');
+                addLog(`⏱️ Current Time: ${state.video.currentTime}`, 'info');
+                addLog(`🎬 Paused: ${state.video.paused}`, 'info');
+                addLog(`🔇 Muted: ${state.video.muted}`, 'info');
+            }
+            
+            if (state.canvas) {
+                addLog(`📐 Dimensões do canvas: ${state.canvas.width}x${state.canvas.height}`, 'info');
+                addLog(`🎨 CSS do canvas: ${state.canvas.style.width} x ${state.canvas.style.height}`, 'info');
+            }
+            
+            if (state.ctx) {
+                addLog(`🎨 Context 2D disponível`, 'info');
+            }
+            
+            addLog(`🎯 Tracking ativo: ${state.isTracking}`, 'info');
+            addLog('🐛 === FIM DEBUG ===', 'info');
+        }
+        
+        // ===== FUNÇÕES UTILITÁRIAS =====
+        
+        // Adicionar log
+        function addLog(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            elements.logContainer.appendChild(logEntry);
+            elements.logContainer.scrollTop = elements.logContainer.scrollHeight;
+            
+            // Limitar número de logs
+            if (elements.logContainer.children.length > 100) {
+                elements.logContainer.removeChild(elements.logContainer.firstChild);
+            }
+        }
+        
+        // ===== INICIALIZAÇÃO =====
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('🚀 Gaze Tracker Roboflow inicializado', 'success');
+            addLog(`⚙️ Configuração: FPS=${CONFIG.TARGET_FPS}, Smoothing=${CONFIG.SMOOTHING_FACTOR}`, 'info');
+            addLog(`📐 Dead Zone: ±${CONFIG.FOCUS_ZONES.deadZone}`, 'info');
+            
+            // Configurar canvas inicial
+            if (elements.canvas) {
+                elements.canvas.width = 640;
+                elements.canvas.height = 480;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -38,6 +38,7 @@
       "target": [
         "dmg"
       ],
+      "icon": "build/icon.icns",
       "extendInfo": {
         "NSCameraUsageDescription": "Usamos a câmera para monitorar foco durante a sessão."
       }

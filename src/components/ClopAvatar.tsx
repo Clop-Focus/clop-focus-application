@@ -1,6 +1,7 @@
 import React from 'react'
 import { useClopFocusStore } from '@/store/clopfocus-store'
 import { cn } from '@/lib/utils'
+import { ClopIcon } from './ClopIcon'
 
 type ClopAvatarProps = {
   size?: 'sm' | 'md' | 'lg'
@@ -8,7 +9,7 @@ type ClopAvatarProps = {
   moodOverride?: 'focus' | 'calm' | 'alert'
 }
 
-const sizeMap = { sm: 32, md: 48, lg: 72 }
+const sizeMap = { sm: 48, md: 72, lg: 120 }
 
 export const ClopAvatar: React.FC<ClopAvatarProps> = ({
   size = 'md',
@@ -35,15 +36,7 @@ export const ClopAvatar: React.FC<ClopAvatarProps> = ({
 
   return (
     <div className="flex items-center gap-2">
-      <div
-        className={cn(
-          'rounded-full ring-4 bg-gradient-to-br from-primary/20 to-primary/10 shadow',
-          ring
-        )}
-        style={{ width: px, height: px }}
-      >
-        <div className="w-full h-full grid place-items-center text-xl">🧠</div>
-      </div>
+      <ClopIcon size="lg" />
       {showMessage && <span className="text-sm text-muted-foreground">{msg}</span>}
     </div>
   )

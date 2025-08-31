@@ -134,6 +134,7 @@ async function createWindow() {
     width: 1280,
     height: 800,
     backgroundColor: "#0b0b0c",
+    icon: (0, import_path.join)(__dirname, "../build/icon.ico"),
     webPreferences: {
       preload: (0, import_path.join)(__dirname, "preload.cjs"),
       contextIsolation: true,

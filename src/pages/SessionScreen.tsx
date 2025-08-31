@@ -14,9 +14,12 @@ import {
   AlertTriangle,
   Video,
   VideoOff,
+  Eye,
+  Target,
 } from 'lucide-react';
 import { ClopAvatar } from '@/components/ClopAvatar';
 import { LifeBar } from '@/components/LifeBar';
+import { ClopIcon } from '@/components/ClopIcon';
 import { useClopFocusStore } from '@/store/clopfocus-store';
 import { useNotifications } from '@/hooks/use-notifications';
 import { cn } from '@/lib/utils';
@@ -62,10 +65,28 @@ export default function SessionScreen() {
   const {
     isConnected,
     isMonitoring,
+    gazeData,
+    sessionState: gazeSessionState,
     connect,
     startMonitoring,
     stopMonitoring,
-  } = useGazeDetection();
+    getSessionStats,
+    focusLossCount,
+    currentFocusScore,
+    focusPercentage,
+  } = useGazeDetection({
+    backendUrl: 'ws://localhost:8000',
+    onFocusLoss: (data) => {
+      console.log('🚨 Perda de foco detectada pelo gaze:', data);
+      // Aqui você pode integrar com o sistema de notificações
+      if (permission === 'granted') {
+        notifyFocusLoss(currentSession?.level || 'medio');
+      }
+    },
+    onGazeUpdate: (data) => {
+      console.log('👁️ Gaze atualizado:', data.focus_analysis.status);
+    }
+  });
 
   const justEndedRef = useRef(false);
 
@@ -87,9 +108,10 @@ export default function SessionScreen() {
   useEffect(() => {
     if (cameraStream && !isConnected) {
       connect().then(() => {
+        console.log('✅ Conectado ao backend de gaze');
         startMonitoring();
       }).catch((error) => {
-        // Silenciar erro de conexão
+        console.error('❌ Erro ao conectar ao backend de gaze:', error);
       });
     }
   }, [cameraStream, isConnected, connect, startMonitoring]);
@@ -205,6 +227,20 @@ export default function SessionScreen() {
     intenso: 'bg-level-intenso text-white',
   };
 
+  const getFocusLevelColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    if (score >= 40) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
+  const getFocusLevelText = (score: number) => {
+    if (score >= 80) return 'Excelente';
+    if (score >= 60) return 'Bom';
+    if (score >= 40) return 'Moderado';
+    return 'Baixo';
+  };
+
   const MetricsGrid = () => (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
       <Card>
@@ -259,6 +295,22 @@ export default function SessionScreen() {
 
           <div className="flex items-center gap-2">
             <LifeBar lives={lives} size="sm" />
+            
+            {/* Status do Gaze Detection */}
+            {preferences.cameraOn && (
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  isConnected ? "bg-green-500" : "bg-gray-400",
+                  isMonitoring ? "animate-pulse" : ""
+                )}></div>
+                <Badge variant="secondary" className={cn(
+                  isConnected ? "bg-green-500/20 text-green-600 border-green-500/30" : "bg-gray-500/20 text-gray-600 border-gray-500/30"
+                )}>
+                  {isConnected ? "👁️ Gaze Ativo" : "👁️ Gaze Inativo"}
+                </Badge>
+              </div>
+            )}
             
             <Button
               variant="ghost"
@@ -327,7 +379,7 @@ export default function SessionScreen() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold flex items-center gap-3">
                   <Camera className="w-6 h-6 text-primary" />
-                  Monitoramento de Foco
+                  Monitoramento de Foco com IA
                 </h3>
                 <div className="flex items-center gap-2">
                   {!cameraStream && !cameraError && (
@@ -349,6 +401,40 @@ export default function SessionScreen() {
                 {/* Métricas - Lado esquerdo */}
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium text-muted-foreground mb-3">Métricas em Tempo Real</h4>
+                  
+                  {/* Métricas de Gaze */}
+                  {gazeData && (
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <Card className="border-blue-500/20 bg-blue-500/5">
+                        <CardContent className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <Eye className="w-4 h-4 text-blue-500" />
+                            <span className="text-xs text-muted-foreground">Score de Foco</span>
+                          </div>
+                          <div className={cn("text-2xl font-bold mb-1", getFocusLevelColor(currentFocusScore))}>
+                            {currentFocusScore}%
+                          </div>
+                          <p className="text-xs text-muted-foreground">{getFocusLevelText(currentFocusScore)}</p>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card className="border-green-500/20 bg-green-500/5">
+                        <CardContent className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <Target className="w-4 h-4 text-green-500" />
+                            <span className="text-xs text-muted-foreground">Atenção</span>
+                          </div>
+                          <div className="text-2xl font-bold text-green-500 mb-1">
+                            {Math.round(gazeData.attention * 100)}%
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {gazeData.focus_analysis.status === 'focused' ? 'Focado' : 'Distraído'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <Card className="border-primary/20 bg-primary/5">
                       <CardContent className="p-4 text-center">
@@ -377,9 +463,9 @@ export default function SessionScreen() {
                     <Card className="border-game-distraction/20 bg-game-distraction/5">
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold text-game-distraction mb-1">
-                          {currentSession.distractions}
+                          {focusLossCount}
                         </div>
-                        <p className="text-sm text-muted-foreground">Distrações</p>
+                        <p className="text-sm text-muted-foreground">Perdas de foco</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -401,6 +487,30 @@ export default function SessionScreen() {
                       <div className="absolute top-2 right-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                       </div>
+                      
+                      {/* Status do Gaze Detection */}
+                      <div className="absolute top-2 left-2">
+                        <div className={cn(
+                          "w-3 h-3 rounded-full",
+                          isConnected ? "bg-blue-500" : "bg-gray-400",
+                          isMonitoring ? "animate-pulse" : ""
+                        )}></div>
+                      </div>
+                      
+                      {/* Indicador de foco */}
+                      {gazeData && (
+                        <div className="absolute bottom-2 left-2">
+                          <Badge variant="secondary" className={cn(
+                            "text-xs",
+                            gazeData.focus_analysis.status === 'focused' 
+                              ? "bg-green-500/20 text-green-600 border-green-500/30" 
+                              : "bg-red-500/20 text-red-600 border-red-500/30"
+                          )}>
+                            <ClopIcon size="md" className="mr-1" />
+                            {gazeData.focus_analysis.status === 'focused' ? 'Focado' : 'Distraído'}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   ) : cameraError ? (
                     <div className="w-full h-64 border-2 border-dashed border-red-300 rounded-xl flex items-center justify-center bg-red-50">

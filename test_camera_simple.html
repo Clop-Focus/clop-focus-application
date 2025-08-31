@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Câmera Simples</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+        
+        #videoElement {
+            width: 100%;
+            max-width: 640px;
+            height: 480px;
+            border: 3px solid #4CAF50;
+            border-radius: 10px;
+            background: #000;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📷 Teste Câmera Simples</h1>
+        
+        <video id="videoElement" autoplay playsinline muted></video>
+        
+        <div>
+            <button id="startBtn" onclick="startCamera()">🎥 Iniciar Câmera</button>
+            <button id="stopBtn" onclick="stopCamera()" disabled>⏹️ Parar Câmera</button>
+            <button onclick="testCanvas()">🎨 Teste Canvas</button>
+        </div>
+        
+        <div class="status" id="status">
+            Status: Aguardando...
+        </div>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let stream = null;
+        let video = null;
+        let canvas = null;
+        let ctx = null;
+        
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const logs = document.getElementById('logs');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        function updateStatus(message) {
+            status.textContent = `Status: ${message}`;
+        }
+        
+        async function startCamera() {
+            try {
+                updateStatus('Solicitando permissão...');
+                log('🔐 Solicitando acesso à câmera...', 'info');
+                
+                // Solicitar acesso à câmera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                
+                log('✅ Permissão concedida!', 'success');
+                updateStatus('Configurando vídeo...');
+                
+                // Configurar vídeo
+                video = document.getElementById('videoElement');
+                video.srcObject = stream;
+                
+                // Aguardar carregamento
+                video.onloadedmetadata = () => {
+                    log(`📹 Vídeo carregado: ${video.videoWidth}x${video.videoHeight}`, 'success');
+                    updateStatus('Câmera ativa!');
+                    
+                    // Configurar canvas
+                    setupCanvas();
+                    
+                    // Atualizar botões
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                };
+                
+                video.onerror = (error) => {
+                    log(`❌ Erro no vídeo: ${error.message}`, 'error');
+                    updateStatus('Erro no vídeo');
+                };
+                
+            } catch (error) {
+                log(`❌ Erro ao acessar câmera: ${error.message}`, 'error');
+                updateStatus(`Erro: ${error.message}`);
+                
+                if (error.name === 'NotAllowedError') {
+                    log('🔒 Permissão negada pelo usuário', 'error');
+                } else if (error.name === 'NotFoundError') {
+                    log('📷 Câmera não encontrada', 'error');
+                } else if (error.name === 'NotReadableError') {
+                    log('📷 Câmera em uso por outro aplicativo', 'error');
+                }
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video = null;
+                
+                if (canvas) {
+                    canvas.remove();
+                    canvas = null;
+                    ctx = null;
+                }
+                
+                log('🛑 Câmera parada', 'info');
+                updateStatus('Câmera parada');
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        function setupCanvas() {
+            if (!video) return;
+            
+            // Criar canvas
+            canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.style.position = 'absolute';
+            canvas.style.top = video.offsetTop + 'px';
+            canvas.style.left = video.offsetLeft + 'px';
+            canvas.style.pointerEvents = 'none';
+            canvas.style.zIndex = '10';
+            
+            // Adicionar ao DOM
+            video.parentNode.style.position = 'relative';
+            video.parentNode.appendChild(canvas);
+            
+            // Obter contexto
+            ctx = canvas.getContext('2d');
+            
+            log(`🎨 Canvas criado: ${canvas.width}x${canvas.height}`, 'success');
+        }
+        
+        function testCanvas() {
+            if (!ctx || !canvas) {
+                log('❌ Canvas não disponível', 'error');
+                return;
+            }
+            
+            log('🎨 Testando canvas...', 'info');
+            
+            // Limpar
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Desenhar teste
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(10, 10, 50, 50);
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(70, 10, 50, 50);
+            
+            ctx.fillStyle = '#0000ff';
+            ctx.fillRect(130, 10, 50, 50);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px Arial';
+            ctx.fillText('CANVAS FUNCIONANDO!', 10, 100);
+            
+            log('✅ Teste de canvas concluído!', 'success');
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 Sistema inicializado', 'success');
+            updateStatus('Pronto para testar');
+        });
+    </script>
+</body>
+</html>
