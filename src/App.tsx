@@ -6,6 +6,7 @@ import NotFound from "./pages/NotFound";
 import SetupScreen from "./pages/SetupScreen";
 import SessionScreen from "./pages/SessionScreen";
 import ResultsScreen from "./pages/ResultsScreen";
+import BothModsPage from "./pages/BothModsPage";
 
 const App = () => (
   <TooltipProvider>
@@ -14,6 +15,7 @@ const App = () => (
       <Route path="/" element={<SetupScreen />} />
       <Route path="/session" element={<SessionScreen />} />
       <Route path="/results" element={<ResultsScreen />} />
+      <Route path="/bothmods" element={<BothModsPage />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

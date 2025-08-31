@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useGazeDetection } from '@/hooks/useGazeDetection';
+import BothModsIntegration from '@/components/BothModsIntegration';
 
 export default function SessionScreen() {
   const navigate = useNavigate();
@@ -61,32 +61,9 @@ export default function SessionScreen() {
   // Hook para notificações do sistema
   const { permission, requestPermission, notifyFocusLoss } = useNotifications();
 
-  // Hook para detecção de gaze
-  const {
-    isConnected,
-    isMonitoring,
-    gazeData,
-    sessionState: gazeSessionState,
-    connect,
-    startMonitoring,
-    stopMonitoring,
-    getSessionStats,
-    focusLossCount,
-    currentFocusScore,
-    focusPercentage,
-  } = useGazeDetection({
-    backendUrl: 'ws://localhost:8000',
-    onFocusLoss: (data) => {
-      console.log('🚨 Perda de foco detectada pelo gaze:', data);
-      // Aqui você pode integrar com o sistema de notificações
-      if (permission === 'granted') {
-        notifyFocusLoss(currentSession?.level || 'medio');
-      }
-    },
-    onGazeUpdate: (data) => {
-      console.log('👁️ Gaze atualizado:', data.focus_analysis.status);
-    }
-  });
+  // Estado para integração BothMods
+  const [faceAway, setFaceAway] = useState<boolean | null>(null);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   const justEndedRef = useRef(false);
 
@@ -104,18 +81,6 @@ export default function SessionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession, preferences.cameraOn]);
 
-  // Conectar e iniciar monitoramento de gaze quando a câmera estiver ativa
-  useEffect(() => {
-    if (cameraStream && !isConnected) {
-      connect().then(() => {
-        console.log('✅ Conectado ao backend de gaze');
-        startMonitoring();
-      }).catch((error) => {
-        console.error('❌ Erro ao conectar ao backend de gaze:', error);
-      });
-    }
-  }, [cameraStream, isConnected, connect, startMonitoring]);
-
   // Solicitar permissão de notificação quando a sessão iniciar
   useEffect(() => {
     if (currentSession && permission === 'default') {
@@ -123,12 +88,14 @@ export default function SessionScreen() {
     }
   }, [currentSession, permission, requestPermission]);
 
+  // Cleanup da câmera quando o componente for desmontado
   useEffect(() => {
     return () => {
-      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
-      if (isMonitoring) stopMonitoring();
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
     };
-  }, [cameraStream, isMonitoring, stopMonitoring]);
+  }, [cameraStream]);
 
   const initializeCamera = async () => {
     try {
@@ -147,13 +114,13 @@ export default function SessionScreen() {
     }
   };
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
       setCameraError(null);
     }
-  };
+  }, [cameraStream]);
 
   useEffect(() => {
     const interval = setInterval(() => updateElapsedTime(), 1000);
@@ -187,7 +154,7 @@ export default function SessionScreen() {
         justEndedRef.current = false;
       }, 0);
     }
-  }, [currentSession, elapsedTime, endSession, navigate]);
+  }, [currentSession, elapsedTime, endSession, navigate, stopCamera]);
 
   if (!currentSession) return null;
 
@@ -296,22 +263,6 @@ export default function SessionScreen() {
           <div className="flex items-center gap-2">
             <LifeBar lives={lives} size="sm" />
             
-            {/* Status do Gaze Detection */}
-            {preferences.cameraOn && (
-              <div className="flex items-center gap-2">
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  isConnected ? "bg-green-500" : "bg-gray-400",
-                  isMonitoring ? "animate-pulse" : ""
-                )}></div>
-                <Badge variant="secondary" className={cn(
-                  isConnected ? "bg-green-500/20 text-green-600 border-green-500/30" : "bg-gray-500/20 text-gray-600 border-gray-500/30"
-                )}>
-                  {isConnected ? "👁️ Gaze Ativo" : "👁️ Gaze Inativo"}
-                </Badge>
-              </div>
-            )}
-            
             <Button
               variant="ghost"
               size="icon"
@@ -402,38 +353,14 @@ export default function SessionScreen() {
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium text-muted-foreground mb-3">Métricas em Tempo Real</h4>
                   
-                  {/* Métricas de Gaze */}
-                  {gazeData && (
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <Card className="border-blue-500/20 bg-blue-500/5">
-                        <CardContent className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <Eye className="w-4 h-4 text-blue-500" />
-                            <span className="text-xs text-muted-foreground">Score de Foco</span>
-                          </div>
-                          <div className={cn("text-2xl font-bold mb-1", getFocusLevelColor(currentFocusScore))}>
-                            {currentFocusScore}%
-                          </div>
-                          <p className="text-xs text-muted-foreground">{getFocusLevelText(currentFocusScore)}</p>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card className="border-green-500/20 bg-green-500/5">
-                        <CardContent className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <Target className="w-4 h-4 text-green-500" />
-                            <span className="text-xs text-muted-foreground">Atenção</span>
-                          </div>
-                          <div className="text-2xl font-bold text-green-500 mb-1">
-                            {Math.round(gazeData.attention * 100)}%
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {gazeData.focus_analysis.status === 'focused' ? 'Focado' : 'Distraído'}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
+                  {/* Indicação de rosto virado */}
+                  <BothModsIntegration
+                    onFaceAwayChange={setFaceAway}
+                    onDebugLog={setDebugLog}
+                    cameraStream={cameraStream}
+                    videoRef={videoRef}
+                    isActive={sessionState === 'running'}
+                  />
                   
                   <div className="grid grid-cols-2 gap-4">
                     <Card className="border-primary/20 bg-primary/5">
@@ -463,9 +390,9 @@ export default function SessionScreen() {
                     <Card className="border-game-distraction/20 bg-game-distraction/5">
                       <CardContent className="p-4 text-center">
                         <div className="text-2xl font-bold text-game-distraction mb-1">
-                          {focusLossCount}
+                          {currentSession.distractions}
                         </div>
-                        <p className="text-sm text-muted-foreground">Perdas de foco</p>
+                        <p className="text-sm text-muted-foreground">Distrações</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -488,26 +415,17 @@ export default function SessionScreen() {
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                       </div>
                       
-                      {/* Status do Gaze Detection */}
-                      <div className="absolute top-2 left-2">
-                        <div className={cn(
-                          "w-3 h-3 rounded-full",
-                          isConnected ? "bg-blue-500" : "bg-gray-400",
-                          isMonitoring ? "animate-pulse" : ""
-                        )}></div>
-                      </div>
-                      
-                      {/* Indicador de foco */}
-                      {gazeData && (
+                      {/* Indicador de rosto virado */}
+                      {faceAway !== null && (
                         <div className="absolute bottom-2 left-2">
                           <Badge variant="secondary" className={cn(
                             "text-xs",
-                            gazeData.focus_analysis.status === 'focused' 
-                              ? "bg-green-500/20 text-green-600 border-green-500/30" 
-                              : "bg-red-500/20 text-red-600 border-red-500/30"
+                            faceAway
+                              ? "bg-red-500/20 text-red-600 border-red-500/30"
+                              : "bg-green-500/20 text-green-600 border-green-500/30"
                           )}>
                             <ClopIcon size="md" className="mr-1" />
-                            {gazeData.focus_analysis.status === 'focused' ? 'Focado' : 'Distraído'}
+                            {faceAway ? 'Rosto Virado' : 'Rosto Visível'}
                           </Badge>
                         </div>
                       )}

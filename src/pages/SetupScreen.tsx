@@ -76,7 +76,7 @@ export default function SetupScreen() {
         </Card>
 
         {/* Start Button */}
-        <div className="pb-8">
+        <div className="pb-8 space-y-4">
           <Button
             size="lg"
             onClick={handleStartSession}
@@ -84,6 +84,15 @@ export default function SetupScreen() {
             data-testid="start-button"
           >
             Iniciar Sessão de Foco
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => navigate('/bothmods')}
+            className="w-full min-h-[56px] text-lg font-semibold"
+          >
+            BothMods Integration (MediaPipe Face + Pose)
           </Button>
         </div>
       </div>

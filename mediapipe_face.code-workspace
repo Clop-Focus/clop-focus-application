@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../../../../../Downloads/mediapipe_pose-poselandmarkdetector.onnx/model.onnx"
+		}
+	],
+	"settings": {}
+}
