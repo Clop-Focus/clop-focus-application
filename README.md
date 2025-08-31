@@ -57,6 +57,10 @@
 
 </div>
 
+## 🎥 Demo
+
+[YouTube](https://www.youtube.com/watch?v=sRBH6cwSeD4)
+
 ## 🎯 Características Principais
 
 - **3 Telas Principais**: Setup rápido, sessão de foco e resultados detalhados
