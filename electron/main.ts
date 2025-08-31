@@ -1,5 +1,7 @@
 import { app, BrowserWindow, session } from 'electron'
 import { join } from 'path'
+import { ipcMain } from 'electron'
+import { createOverlays, flashOverlay, showOverlay, hideOverlay } from './overlay.cjs'
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173'
 
@@ -57,6 +59,138 @@ async function createWindow() {
   win.on('closed', () => (win = null))
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(async () => {
+  // Criar overlays antes da janela principal
+  createOverlays()
+  
+  // Criar janela principal
+  await createWindow()
+  
+  // Expor função para testes no DevTools
+  if (win) {
+    win.webContents.executeJavaScript(`
+      window.flashFocusAlert = () => {
+        console.log('🔴 Testando overlay de foco...');
+        return true;
+      };
+    `)
+  }
+})
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+
+// Handlers IPC para notificações
+ipcMain.handle('notifications:isSupported', () => {
+  // No Electron, sempre suportamos notificações
+  console.log('🔔 main: notifications:isSupported - sempre retorna true')
+  return true
+})
+
+ipcMain.handle('notifications:getPermission', () => {
+  // No Electron, assumimos que temos permissão
+  console.log('🔔 main: getPermission - sempre retorna granted')
+  return 'granted'
+})
+
+ipcMain.handle('notifications:requestPermission', async () => {
+  // No Electron, sempre concedemos permissão
+  console.log('🔔 main: requestPermission - sempre retorna granted')
+  return 'granted'
+})
+
+ipcMain.handle('notifications:send', async (event, title: string, options: any) => {
+  console.log('🔔 main: send - criando notificação:', title)
+  
+  try {
+    // Usar a API nativa do sistema operacional
+    const notification = new (require('electron').Notification)({
+      title,
+      body: options?.body || '',
+      icon: options?.icon || join(__dirname, '../public/favicon.ico'),
+      silent: options?.silent || false
+    })
+    
+    // Focar a janela quando clicar na notificação
+    notification.on('click', () => {
+      console.log('🔔 main: notificação clicada, focando janela')
+      if (win) {
+        win.focus()
+      }
+    })
+    
+    notification.show()
+    console.log('🔔 main: notificação criada e exibida com sucesso')
+    
+    return { success: true, id: options?.tag || 'default' }
+  } catch (error) {
+    console.error('🔔 main: erro ao criar notificação:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Handlers IPC para overlay
+ipcMain.handle('overlay:flash', async (_e, ms = 600) => {
+  console.log('🔴 main: overlay:flash - duração:', ms)
+  try {
+    flashOverlay(ms)
+    return true
+  } catch (error) {
+    console.error('🔴 main: erro ao fazer flash do overlay:', error)
+    return false
+  }
+})
+
+ipcMain.handle('overlay:show', async () => {
+  console.log('🔴 main: overlay:show')
+  try {
+    showOverlay()
+    return true
+  } catch (error) {
+    console.error('🔴 main: erro ao mostrar overlay:', error)
+    return false
+  }
+})
+
+ipcMain.handle('overlay:hide', async () => {
+  console.log('🔴 main: overlay:hide')
+  try {
+    hideOverlay()
+    return true
+  } catch (error) {
+    console.error('🔴 main: erro ao esconder overlay:', error)
+    return false
+  }
+})
+
+ipcMain.handle('notifications:notifyFocusLoss', async (event, level: string) => {
+  console.log('🔔 main: notifyFocusLoss - nível:', level)
+  
+  try {
+    const title = '🚨 Perda de Foco Detectada!'
+    const body = `Você perdeu o foco na sessão ${level}. Volte para a tela do ClopFocus!`
+    
+    // Usar a API nativa do Electron para notificações
+    const notification = new (require('electron').Notification)({
+      title,
+      body,
+      icon: join(__dirname, '../public/favicon.ico'),
+      silent: false
+    })
+    
+    // Focar a janela quando clicar na notificação
+    notification.on('click', () => {
+      console.log('🔔 main: notificação de perda de foco clicada, focando janela')
+      if (win) {
+        win.focus()
+      }
+    })
+    
+    notification.show()
+    console.log('🔔 main: notificação de perda de foco criada e exibida com sucesso')
+    
+    return { success: true, id: 'focus-loss' }
+  } catch (error) {
+    console.error('🔔 main: erro ao criar notificação de perda de foco:', error)
+    return { success: false, error: error.message }
+  }
+})
