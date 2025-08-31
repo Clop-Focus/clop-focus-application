@@ -39,6 +39,13 @@
   </tr>
   <tr>
     <td align="center" style="padding: 15px; border: 1px solid #464646;">
+        <img src="https://media.licdn.com/dms/image/v2/D4D03AQEcPJ_5TM_vTQ/profile-displayphoto-shrink_200_200/B4DZdVadRyHAAs-/0/1749484689256?e=1759363200&v=beta&t=oN_hJUKLSyY3QZBG-hv7Z5uKeXc36OsylPaoj79jVbk" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
+        <sub><b>Guilherme Monteiro</b></sub><br>
+        <sub><a href="mailto:guilherme.monteiro@gmail.com">guilherme.monteiro@gmail.com</a></sub><br><br>
+        <a href="https://www.linkedin.com/in/guilherme-monteiro-3653b51a7/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white" /></a>
+        <a href=""><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" /></a> 
+    </td>
+    <td align="center" style="padding: 15px; border: 1px solid #464646;">
       <img src="https://media.licdn.com/dms/image/v2/D4E03AQG5zX-26GuXZw/profile-displayphoto-scale_200_200/B4EZfXUqEmHYAY-/0/1751664208401?e=1759363200&v=beta&t=oSZ7yWRdBq1Sfxl36Euoi0QnDhM2JQeCJVr0g_F9LFs" alt="" style="width:150px; height:150px; object-fit:cover; border-radius:8px;" /><br>
       <sub><b>Roberto D. B. Filho</b></sub><br>
       <sub><a href="mailto:roberto.dbf1@gmail.com">roberto.dbf1@gmail.com</a></sub><br><br>
